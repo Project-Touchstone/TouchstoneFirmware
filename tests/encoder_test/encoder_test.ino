@@ -1,5 +1,6 @@
 #include <Tlv493d.h>
 #include <BusChain.h>
+#include <math.h>
 
 #define SER 3
 #define CLK 4
@@ -11,6 +12,8 @@
 Tlv493d magSensor = Tlv493d();
 
 uint16_t clockSpeed = 400000;
+
+float amplitudes[3] = {0, 0, 0};
 
 void setup() {
   Serial.begin(115200);
@@ -30,18 +33,29 @@ void setup() {
   magSensor.begin();
   magSensor.setAccessMode(magSensor.MASTERCONTROLLEDMODE);
   magSensor.disableTemp();
-  Serial.println("3D Magnetic Sensor Test");
+  Serial.println("Magnetic Encoder Test");
 }
 
-//long cycleStart;
-
 void loop() {
-  //cycleStart = micros();
   magSensor.updateData();
-  Serial.print(magSensor.getX());
-  Serial.print("\t");
-  Serial.print(magSensor.getY());
-  Serial.print("\t");
-  Serial.println(magSensor.getZ());
-  //Serial.println(micros()-cycleStart);
+  bool trigger = false;
+  if (abs(magSensor.getX()) > amplitudes[0]) {
+    amplitudes[0] = abs(magSensor.getX());
+    trigger = true;
+  }
+  if (abs(magSensor.getY()) > amplitudes[1]) {
+    amplitudes[1] = abs(magSensor.getY());
+    trigger = true;
+  }
+  if (abs(magSensor.getZ()) > amplitudes[2]) {
+    amplitudes[2] = abs(magSensor.getZ());
+    trigger = true;
+  }
+  if (trigger) {
+    for (int i = 0; i < 3; i++) {
+        Serial.print(amplitudes[i]);
+        Serial.print("\t");
+    }
+    Serial.println();
+  }
 }
