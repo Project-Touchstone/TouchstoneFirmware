@@ -14,11 +14,13 @@ bool speed = true;
 
 uint16_t clockSpeed = 400000;
 
-uint8_t buffer[2];
+uint8_t buffer[4];
 
-void convertToBytes(uint16_t num) {
-  buffer[0] = (uint8_t) (num >> 8);
-  buffer[1] = (uint8_t) (num & 0b00001111);
+void convertToBytes(int32_t num) {
+  for (int i = 0; i < 4; i++) {
+    buffer[i] = (num & 0b11111111);
+    num = num >> 8;
+  }
 }
 
 void setup() {
@@ -37,7 +39,7 @@ void setup() {
       ;
     }
   }
-  TLV493D.begin(sensorAddr, 1);
+  TLV493D.begin(sensorAddr, 0);
   //Serial.println("3D Magnetic Sensor Test");
 }
 
@@ -48,12 +50,12 @@ void loop() {
  delay(delaytime); // wait time between reads.
 
   if (TLV493D.update(sensorAddr) == 0) {
-        convertToBytes(TLV493D.convertToMag(TLV493D.rawX()));
-        Serial.write(buffer, 2);
-        convertToBytes(TLV493D.convertToMag(TLV493D.rawY()));
-        Serial.write(buffer, 2);
-        convertToBytes(TLV493D.convertToMag(TLV493D.rawZ()));
-        Serial.write(buffer, 2);
+        convertToBytes(TLV493D.rawX());
+        Serial.write(buffer, 4);
+        convertToBytes(TLV493D.rawY());
+        Serial.write(buffer, 4);
+        convertToBytes(TLV493D.rawZ());
+        Serial.write(buffer, 4);
         Serial.write('\n');
   } else {
     //Serial.println("Data read error!");

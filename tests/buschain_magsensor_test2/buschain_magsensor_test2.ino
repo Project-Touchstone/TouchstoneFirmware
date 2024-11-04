@@ -1,4 +1,4 @@
-#include <TLV493D.h>
+#include <Tlv493d.h>
 #include <BusChain.h>
 
 #define SER 3
@@ -7,10 +7,8 @@
 
 #define targetBus 7
 
-byte delaytime = 1;
-
-const uint16_t sensorAddr = 0x5E;
-bool speed = true;
+// Tlv493d Opject
+Tlv493d magSensor = Tlv493d();
 
 uint16_t clockSpeed = 400000;
 
@@ -30,7 +28,9 @@ void setup() {
       ;
     }
   }
-  TLV493D.begin(sensorAddr, 1);
+  magSensor.begin();
+  magSensor.setAccessMode(magSensor.MASTERCONTROLLEDMODE);
+  magSensor.disableTemp();
   Serial.println("3D Magnetic Sensor Test");
 }
 
@@ -38,18 +38,11 @@ void setup() {
 
 void loop() {
   //cycleStart = micros();
- delay(delaytime); // wait time between reads.
-
-  if (TLV493D.update(sensorAddr) == 0) {
-        Serial.print(TLV493D.convertToMag(TLV493D.getX()));
-        Serial.print("\t");
-        Serial.print(TLV493D.convertToMag(TLV493D.getY()));
-        Serial.print("\t");
-        Serial.print(TLV493D.convertToMag(TLV493D.getZ()));
-        Serial.print("\t");
-        Serial.println(TLV493D.convertToCelsius(TLV493D.getT()));
-  } else {
-    Serial.println("Data read error!");
-  }
+  magSensor.updateData();
+  Serial.print(magSensor.getX());
+  Serial.print("\t");
+  Serial.print(magSensor.getY());
+  Serial.print("\t");
+  Serial.println(magSensor.getZ());
   //Serial.println(micros()-cycleStart);
 }
