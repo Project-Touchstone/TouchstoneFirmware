@@ -132,9 +132,9 @@ void setup() {
 }
 
 void loop() {
-    magSensor.updateData();
-    updateYVals();
-    calculateAngles();
-    calculatePosition();
-    Serial.println(position);
+  magSensor.updateData();
+  updateYVals();
+  calculateAngles();
+  calculatePosition();
+  Serial.println(position);
 }
