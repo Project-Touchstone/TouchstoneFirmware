@@ -1,12 +1,17 @@
 #include <TrackRing.h>
 #include <BusChain.h>
 #include <math.h>
+#include <Servo.h>
 
 #define SER 3
 #define CLK 4
 #define RCLK 5
 
+#define servoPin 6
+
 #define targetBus 7
+
+Servo servo;
 
 const float unitsPerRadian = 1/PI;
 
@@ -15,13 +20,15 @@ TrackRing encoder = TrackRing();
 
 uint16_t clockSpeed = 400000;
 
-long timerStart = 0;
+unsigned long timeStart = 0;
 
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
     ;
   }
+
+  servo.attach(servoPin);
   
   BusChain.begin(SER, CLK, RCLK, 1, clockSpeed);
   uint8_t err = BusChain.selectBus(targetBus);
@@ -42,11 +49,13 @@ void setup() {
   encoder.setUnitsPerRadian(unitsPerRadian);
   Serial.println("Servo Control Test");
 
-  timerStart = millis();
-  while (millis() - timerStart < 5000) {
-    encoder.calibrateAmplitudes();
+  //servo.write(89);
+  timeStart = millis();
+  while (millis() - timeStart < 4000) {
+    encoder.calibrate();
   }
   encoder.reset();
+  //servo.write(90);
 }
 
 void loop() {
