@@ -1,7 +1,7 @@
 #include <TrackRing.h>
 #include <BusChain.h>
 #include <math.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 
 #define SER 3
 #define CLK 4
@@ -28,10 +28,12 @@ void setup() {
     ;
   }
 
-  servo.attach(servoPin);
+  // Allocates specific timer
+	ESP32PWM::allocateTimer(1);
+	servo.attach(servoPin); // attaches the servo on pin 18 to the servo object
   
-  BusChain.begin(SER, CLK, RCLK, 1, clockSpeed);
-  uint8_t err = BusChain.selectBus(targetBus);
+  BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
+  uint8_t err = BusChain::selectBus(targetBus);
   if (err != 0) {
     Serial.print("Error selecting I2C Bus: ");
     Serial.println(err);
@@ -49,13 +51,13 @@ void setup() {
   encoder.setUnitsPerRadian(unitsPerRadian);
   Serial.println("Servo Control Test");
 
-  //servo.write(89);
+  servo.write(89);
   timeStart = millis();
   while (millis() - timeStart < 4000) {
     encoder.calibrate();
   }
   encoder.reset();
-  //servo.write(90);
+  servo.write(90);
 }
 
 void loop() {
