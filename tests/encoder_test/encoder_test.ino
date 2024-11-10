@@ -9,7 +9,7 @@
 #define targetBus 7
 
 // Tlv493d Opject
-Tlv493d magSensor = Tlv493d();
+Tlv493d magSensor = Tlv93d();
 
 uint16_t clockSpeed = 400000;
 

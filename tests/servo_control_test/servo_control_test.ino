@@ -8,6 +8,8 @@
 
 #define targetBus 7
 
+const float unitsPerRadian = 1/PI;
+
 // TrackRing object
 TrackRing encoder = TrackRing();
 
@@ -20,19 +22,34 @@ void setup() {
   while (!Serial) {
     ;
   }
+  
   BusChain.begin(SER, CLK, RCLK, 1, clockSpeed);
-
-  BusChain.selectBus(targetBus);
-  encoder.begin();
-  encoder.setPeriodsPerRev(18);
+  uint8_t err = BusChain.selectBus(targetBus);
+  if (err != 0) {
+    Serial.print("Error selecting I2C Bus: ");
+    Serial.println(err);
+    while (true) {
+      ;
+    }
+  }
+  
+  if (!encoder.begin()) {
+    Serial.println("Error initializing encoder");
+    while (true) {
+        ;
+    }
+  }
+  encoder.setUnitsPerRadian(unitsPerRadian);
   Serial.println("Servo Control Test");
 
-  while (encoder.calibrate()) {
-
+  timerStart = millis();
+  while (millis() - timerStart < 5000) {
+    encoder.calibrateAmplitudes();
   }
+  encoder.reset();
 }
 
 void loop() {
   encoder.update();
-  Serial.println(encoder.relativePosition());
+  Serial.println(encoder.absolutePosition());
 }
