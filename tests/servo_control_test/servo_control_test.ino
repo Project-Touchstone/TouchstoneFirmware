@@ -3,11 +3,11 @@
 #include <math.h>
 #include <ESP32Servo.h>
 
-#define SER 19
-#define CLK 5
-#define RCLK 18
+#define SER 4
+#define CLK 15
+#define RCLK 2
 
-#define servoPin 23
+#define servoPin 5
 
 #define targetBus 7
 
