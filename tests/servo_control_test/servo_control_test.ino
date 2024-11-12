@@ -3,11 +3,11 @@
 #include <math.h>
 #include <ESP32Servo.h>
 
-#define SER 3
-#define CLK 4
-#define RCLK 5
+#define SER 19
+#define CLK 5
+#define RCLK 18
 
-#define servoPin 6
+#define servoPin 23
 
 #define targetBus 7
 
@@ -18,19 +18,19 @@ const float unitsPerRadian = 1/PI;
 // TrackRing object
 TrackRing encoder = TrackRing();
 
-uint16_t clockSpeed = 400000;
+uint16_t clockSpeed = 1;
 
 unsigned long timeStart = 0;
 
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
-    ;
-  }
 
+  }
+  
   // Allocates specific timer
-	ESP32PWM::allocateTimer(1);
-	servo.attach(servoPin); // attaches the servo on pin 18 to the servo object
+	//ESP32PWM::allocateTimer(1);
+	//servo.attach(servoPin);
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
   uint8_t err = BusChain::selectBus(targetBus);
@@ -51,13 +51,13 @@ void setup() {
   encoder.setUnitsPerRadian(unitsPerRadian);
   Serial.println("Servo Control Test");
 
-  servo.write(89);
+  //servo.write(89);
   timeStart = millis();
   while (millis() - timeStart < 4000) {
     encoder.calibrate();
   }
   encoder.reset();
-  servo.write(90);
+  //servo.write(90);
 }
 
 void loop() {
