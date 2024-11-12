@@ -2,14 +2,14 @@
 #include <BusChain.h>
 #include <math.h>
 
-#define SER 3
-#define CLK 4
-#define RCLK 5
+#define SER 4
+#define CLK 15
+#define RCLK 2
 
 #define targetBus 7
 
 // Tlv493d Opject
-Tlv493d magSensor = Tlv93d();
+Tlv493d magSensor = Tlv493d();
 
 uint16_t clockSpeed = 400000;
 
@@ -20,7 +20,7 @@ float angles[3][2];
 float prevAngle = 0;
 float position = 0;
 
-long timerStart = 0;
+long timeStart = 0;
 
 void updateAmplitudes() {
   if (abs(magSensor.getX()) > amplitudes[0]) {
@@ -123,8 +123,8 @@ void setup() {
   magSensor.disableTemp();
   Serial.println("Magnetic Encoder Test");
 
-  timerStart = millis();
-  while (millis() - timerStart < 5000) {
+  timeStart = millis();
+  while (millis() - timeStart < 5000) {
     magSensor.updateData();
     updateAmplitudes();
   }

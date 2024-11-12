@@ -18,7 +18,7 @@ const float unitsPerRadian = 1/PI;
 // TrackRing object
 TrackRing encoder = TrackRing();
 
-uint16_t clockSpeed = 1;
+uint16_t clockSpeed = 400000;
 
 unsigned long timeStart = 0;
 
@@ -29,8 +29,8 @@ void setup() {
   }
   
   // Allocates specific timer
-	//ESP32PWM::allocateTimer(1);
-	//servo.attach(servoPin);
+	ESP32PWM::allocateTimer(1);
+	servo.attach(servoPin);
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
   uint8_t err = BusChain::selectBus(targetBus);
@@ -42,25 +42,30 @@ void setup() {
     }
   }
   
-  if (!encoder.begin()) {
+  if (encoder.begin()) {
     Serial.println("Error initializing encoder");
     while (true) {
         ;
     }
   }
   encoder.setUnitsPerRadian(unitsPerRadian);
+  encoder.setDirection(1);
   Serial.println("Servo Control Test");
 
-  //servo.write(89);
+  servo.write(89);
   timeStart = millis();
   while (millis() - timeStart < 4000) {
-    encoder.calibrate();
+    if (millis() - timeStart < 3000) {
+      encoder.calibrate();
+    } else {
+      encoder.update();
+    }
   }
   encoder.reset();
-  //servo.write(90);
 }
 
 void loop() {
+  timeStart = micros();
   encoder.update();
-  Serial.println(encoder.absolutePosition());
+  Serial.println(micros() - timeStart);
 }
