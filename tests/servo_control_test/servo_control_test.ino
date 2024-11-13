@@ -15,9 +15,10 @@ Servo servo;
 
 const float unitsPerRadian = 1/PI;
 
-const float encoderTarget = 6;
-const float p = -0.1;
+const float encoderTarget = 120;
+const float p = -400;
 const float i = 0;
+const float iCap = 0.1;
 const float d = 0;
 
 // TrackRing object
@@ -28,12 +29,12 @@ uint16_t clockSpeed = 400000;
 unsigned long timeStart = 0;
 
 void driveServo(float power) {
-  if (power > 90) {
-    power = 90;
-  } else if (power < -90) {
-    power = -90;
+  if (power > 1000) {
+    power = 1000;
+  } else if (power < -1000) {
+    power = -1000;
   }
-  servo.write(90+power);
+  servo.writeMicroseconds(1500+power);
 }
 
 float prevError = 0;
@@ -45,9 +46,13 @@ float pid(float error) {
   float dError = 0;
 
   if (timeStart != 0) {
-    float stepTime = (timeStart - micros())*1000000;
-    sumError += error*stepTime;
-    iError = sumError;
+    float stepTime = timeStart - micros();
+    if (abs(error) < iCap) {
+      sumError += error*stepTime;
+      iError = sumError;
+    } else {
+      sumError = 0;
+    }
     dError = (error-prevError)/stepTime;
   }
   
@@ -87,16 +92,17 @@ void setup() {
   encoder.setDirection(-1);
   Serial.println("Servo Control Test");
 
-  driveServo(1);
+  driveServo(50);
   timeStart = millis();
-  while (millis() - timeStart < 4000) {
-    if (millis() - timeStart < 3000) {
+  while (millis() - timeStart < 2000) {
+    if (millis() - timeStart < 1000) {
       encoder.calibrate();
     } else {
       encoder.update();
     }
   }
   driveServo(0);
+  delay(500);
   encoder.reset();
   timeStart = 0;
 }
@@ -104,4 +110,5 @@ void setup() {
 void loop() {
   encoder.update();
   driveServo(pid(encoder.relativePosition() - encoderTarget));
+  Serial.println(encoder.relativePosition());
 }
