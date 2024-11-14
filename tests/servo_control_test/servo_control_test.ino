@@ -16,7 +16,6 @@ Servo servo;
 const float unitsPerRadian = 1/PI;
 
 const float encoderTarget = 120;
-float setPoint = 0;
 const float p = -400;
 const float i = 0;
 const float iCap = 0.1;
@@ -29,14 +28,13 @@ uint16_t clockSpeed = 400000;
 
 unsigned long timeStart = 0;
 
-float driveServo(float power) {
+void driveServo(float power) {
   if (power > 1000) {
     power = 1000;
   } else if (power < -1000) {
     power = -1000;
   }
   servo.writeMicroseconds(1500+power);
-  return power;
 }
 
 float prevError = 0;
@@ -111,7 +109,6 @@ void setup() {
 
 void loop() {
   encoder.update();
-  setPoint += pid(encoder.relativePosition() - encoderTarget);
-  setPoint = driveServo(setPoint);
+  driveServo(pid(encoder.relativePosition() - encoderTarget));
   Serial.println(encoder.relativePosition());
 }
