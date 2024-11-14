@@ -16,7 +16,9 @@ Servo servo;
 const float unitsPerRadian = 1/PI;
 const int8_t encoderDirs[2] = {-1, 1};
 
-const float separationTarget = 4.55;
+const float wallDist = -12;
+const float spoolOffset = 4.5;
+const float minSep = 2.25;
 const float p = -400;
 const float i = 0;
 const float iCap = 0.1;
@@ -127,6 +129,10 @@ void loop() {
     encoders[i].update();
   }
   float separation = encoders[0].relativePosition() - encoders[1].relativePosition();
+  float separationTarget = (wallDist+spoolOffset) - encoders[1].relativePosition();
+  if (separationTarget < minSep) {
+    separationTarget = minSep;
+  }
   driveServo(pid(separation - separationTarget));
-  //Serial.println(separation);
+  Serial.println(encoders[1].relativePosition());
 }
