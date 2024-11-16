@@ -9,20 +9,21 @@
 
 #define servoPin 5
 
-#define targetBus 7
+const uint16_t encoderBuses[2] = {0, 1};
 
 Servo servo;
 
 const float unitsPerRadian = 1/PI;
+const int8_t encoderDirs[2] = {-1, 1};
 
-const float encoderTarget = 120;
+const float separationTarget = 4.55;
 const float p = -400;
 const float i = 0;
 const float iCap = 0.1;
 const float d = 0;
 
-// TrackRing object
-TrackRing encoder = TrackRing();
+// TrackRing objects
+TrackRing encoders[2];
 
 uint16_t clockSpeed = 400000;
 
@@ -73,42 +74,59 @@ void setup() {
 	servo.attach(servoPin);
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
-  uint8_t err = BusChain::selectBus(targetBus);
-  if (err != 0) {
-    Serial.print("Error selecting I2C Bus: ");
-    Serial.println(err);
-    while (true) {
-      ;
+  for (uint8_t i = 0; i < 2; i++) {
+    uint8_t err = BusChain::selectBus(encoderBuses[i]);
+    if (err != 0) {
+      Serial.print("Error selecting I2C Bus: ");
+      Serial.println(encoderBuses[i]);
+      while (true) {
+        ;
+      }
     }
+    
+    if (encoders[i].begin()) {
+      Serial.print("Error initializing encoder: ");
+      Serial.println(encoderBuses[i]);
+      while (true) {
+          ;
+      }
+    }
+    encoders[i].setUnitsPerRadian(unitsPerRadian);
+    encoders[i].setDirection(encoderDirs[i]);
   }
   
-  if (encoder.begin()) {
-    Serial.println("Error initializing encoder");
-    while (true) {
-        ;
-    }
-  }
-  encoder.setUnitsPerRadian(unitsPerRadian);
-  encoder.setDirection(-1);
-  Serial.println("Servo Control Test");
+  Serial.println("Force control test");
 
-  driveServo(50);
+  driveServo(-50);
   timeStart = millis();
   while (millis() - timeStart < 2000) {
     if (millis() - timeStart < 1000) {
-      encoder.calibrate();
+      for (uint8_t i = 0; i < 2; i++) {
+        BusChain::selectBus(encoderBuses[i]);
+        encoders[i].calibrate();
+      }
     } else {
-      encoder.update();
+      for (uint8_t i = 0; i < 2; i++) {
+        BusChain::selectBus(encoderBuses[i]);
+        encoders[i].update();
+      }
     }
   }
   driveServo(0);
   delay(500);
-  encoder.reset();
+  for (uint8_t i = 0; i < 2; i++) {
+    BusChain::selectBus(encoderBuses[i]);
+    encoders[i].reset();
+  }
   timeStart = 0;
 }
 
 void loop() {
-  encoder.update();
-  driveServo(pid(encoder.relativePosition() - encoderTarget));
-  Serial.println(encoder.relativePosition());
+  for (uint8_t i = 0; i < 2; i++) {
+    BusChain::selectBus(encoderBuses[i]);
+    encoders[i].update();
+  }
+  float separation = encoders[0].relativePosition() - encoders[1].relativePosition();
+  driveServo(pid(separation - separationTarget));
+  //Serial.println(separation);
 }
