@@ -1,5 +1,9 @@
+#include <ESP32Servo.h>
+
 //Servo pin
 #define servoPin 5
+
+Servo servo;
 
 const uint16_t interResolution = 5;
 const uint64_t servoInterval = 20000;
@@ -18,32 +22,26 @@ portMUX_TYPE timerMux0 = portMUX_INITIALIZER_UNLOCKED;
 
 void IRAM_ATTR onTimer() {
   portENTER_CRITICAL_ISR(&timerMux0);
-  digitalWrite(servoPin, pwmState);
-  if (pwmState) {
-    if (pulseCount < criticalCount) {
-      timerAlarm(timer0, pwmLevel[1], false, 0);
-    } else {
-      timerAlarm(timer0, pwmLevel[0], false, 0);
-    }
-    pulseCount++;
-    if (pulseCount == interResolution - 1) {
-      pulseCount = 0;
-    }
-  } else {
-    timerAlarm(timer0, servoInterval, true, 0);
+  if (pulseCount < criticalCount) {
+    servo.writeMicroseconds(pwmLevel[1]);
+  } else if (pulseCount == criticalCount) {
+    servo.writeMicroseconds(pwmLevel[0]);
   }
-  pwmState = !pwmState;
+  pulseCount++;
+  if (pulseCount == interResolution - 1) {
+    pulseCount = 0;
+  }
   portEXIT_CRITICAL_ISR(&timerMux0);
 }
 
 void setup() {
   Serial.begin(115200);
 
-  pinMode(servoPin, OUTPUT);
+  servo.attach(servoPin);
 
   timer0 = timerBegin(1000000);
   timerAttachInterrupt(timer0, &onTimer);
-  timerAlarm(timer0, 1000000, true, 0);
+  timerAlarm(timer0, servoInterval, true, 0);
 }
 
 void loop() {
