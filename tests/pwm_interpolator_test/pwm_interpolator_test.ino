@@ -14,7 +14,6 @@ const uint16_t rangeInterval = 5;
 
 uint64_t pwmLevel[2] = {1500, 1460};
 uint8_t criticalCount = 1;
-volatile bool pwmState = true;
 volatile uint16_t pulseCount = 0;
 
 hw_timer_t* timer0 = NULL;
@@ -46,7 +45,7 @@ void setup() {
 
 void loop() {
   for (uint64_t speed = rangeCenter+deadZone; speed < rangeCenter+deadZone+rangeLength; speed++) {
-    uint8_t intervals = (speed-(rangeCenter+deadZone))/rangeInterval;
+    uint32_t intervals = (speed-(rangeCenter+deadZone))/rangeInterval;
     pwmLevel[0] = rangeCenter + deadZone + intervals*rangeInterval;
     pwmLevel[1] = pwmLevel[0] + rangeInterval;
     criticalCount = (speed - pwmLevel[0])*interResolution/rangeInterval;

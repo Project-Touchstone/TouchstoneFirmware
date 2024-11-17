@@ -1,7 +1,7 @@
 #include <TrackRing.h>
 #include <BusChain.h>
 #include <math.h>
-#include <ESP32Servo.h>
+#include <ModulatedServo.h>
 
 #define SER 4
 #define CLK 15
@@ -11,13 +11,11 @@
 
 const uint16_t encoderBuses[2] = {0, 1};
 
-Servo servo;
-
 const float unitsPerRadian = 1/PI;
 const int8_t encoderDirs[2] = {-1, 1};
 
-const float separationTarget = 4.55;
-const float p = -400;
+const float separationTarget = 5;
+const float p = -0.2;
 const float i = 0;
 const float iCap = 0.1;
 const float d = 0;
@@ -25,17 +23,12 @@ const float d = 0;
 // TrackRing objects
 TrackRing encoders[2];
 
-uint16_t clockSpeed = 400000;
+uint16_t clockSpeed = 1000000;
 
 unsigned long timeStart = 0;
 
 void driveServo(float power) {
-  if (power > 1000) {
-    power = 1000;
-  } else if (power < -1000) {
-    power = -1000;
-  }
-  servo.writeMicroseconds(1500+power);
+  ModulatedServo::drive(power);
 }
 
 float prevError = 0;
@@ -70,8 +63,7 @@ void setup() {
   }
   
   // Allocates specific timer
-	ESP32PWM::allocateTimer(1);
-	servo.attach(servoPin);
+	ModulatedServo::attach(servoPin);
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
   for (uint8_t i = 0; i < 2; i++) {
@@ -97,7 +89,7 @@ void setup() {
   
   Serial.println("Force control test");
 
-  driveServo(-50);
+  driveServo(-0.05);
   timeStart = millis();
   while (millis() - timeStart < 2000) {
     if (millis() - timeStart < 1000) {
