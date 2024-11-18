@@ -1,0 +1,43 @@
+#include <DRIFTMotor.h>
+#include <BusChain.h>
+#include <math.h>
+
+#define SER 4
+#define CLK 15
+#define RCLK 2
+
+#define servoPin 5
+
+uint16_t encoderBuses[2] = {0, 1};
+uint16_t clockSpeed = 1000000;
+
+DRIFTMotor motor;
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {
+
+  }
+  
+  BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
+  motor.attach(servoPin, encoderBuses[0], encoderBuses[1]);
+  
+  Serial.println("DRIFT Motor Test");
+
+  while (!motor.calibrate()) {
+
+  }
+}
+
+void loop() {
+  motor.update();
+  if (motor.getPosition(1) > -12) {
+    motor.setDisplacementTarget(-12);
+  } else if (motor.getPosition(1) > -13) {
+    motor.setForceTarget((-12-motor.getPosition(1))*0.1);
+  } else if (motor.getPosition(1) > -14) {
+    motor.setDisplacementTarget(-14);
+  } else {
+    motor.setForceTarget((-14-motor.getPosition(1))*0.5);
+  }
+}

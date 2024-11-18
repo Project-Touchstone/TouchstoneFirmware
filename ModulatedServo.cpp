@@ -43,7 +43,7 @@ void ModulatedServo::attach(uint8_t pin) {
     timerAlarm(timer, servoInterval, true, 0);
 }
 
-void ModulatedServo::drive(float power) {
+void ModulatedServo::drive(double power) {
     if (power > 1) {
         power = 1;
     } else if (power < -1) {
