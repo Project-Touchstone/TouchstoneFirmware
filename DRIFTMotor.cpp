@@ -90,7 +90,7 @@ void DRIFTMotor::drive(float power) {
 }
 void DRIFTMotor::setForceTarget(float force) {
   mode = FORCE;
-  separationTarget = force - spoolOffset;
+  separationTarget = spoolOffset + force;
 }
 void DRIFTMotor::setDisplacementTarget(float target) {
   mode = DISPLACEMENT;
