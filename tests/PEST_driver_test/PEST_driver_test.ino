@@ -56,7 +56,7 @@ char strBuffer[32];
 
 int currPWM = 0;
 int setPoint = 0;
-double gain = 0.01;
+float gain = 0.01;
 int count = 0;
 
 void resetTimer() {

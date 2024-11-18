@@ -7,5 +7,7 @@
 #define Touchstone_h
 
 #include "Arduino.h"
+#include <TrackRing.h>
+#include <BusChain.h>
 
 #endif

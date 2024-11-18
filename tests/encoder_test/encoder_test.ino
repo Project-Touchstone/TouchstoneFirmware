@@ -11,7 +11,7 @@
 // Tlv493d Opject
 Tlv493d magSensor = Tlv493d();
 
-uint16_t clockSpeed = 400000;
+uint32_t clockSpeed = 400000;
 
 float amplitudes[3] = {0, 0, 0};
 const float phases[3] = {0, -PI/2, -PI};

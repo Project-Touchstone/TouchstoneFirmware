@@ -29,7 +29,7 @@ class ModulatedServo {
         static void IRAM_ATTR onTimer();
     public:
         static void attach(uint8_t pin);
-        static void drive(double power);
+        static void drive(float power);
 };
 
 #endif

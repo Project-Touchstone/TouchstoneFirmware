@@ -6,10 +6,9 @@
 #include "DRIFTMotor.h"
 
 DRIFTMotor::DRIFTMotor() {
-  pid.SetOutputLimits(0, 1);
-  pid.SetSampleTime(20);
 }
-uint16_t DRIFTMotor::attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t encoderBus1) {
+
+int16_t DRIFTMotor::attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t encoderBus1) {
   ModulatedServo::attach(servoPin);
 
   for (uint8_t i = 0; i < 2; i++) {
@@ -33,8 +32,10 @@ uint16_t DRIFTMotor::attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t enc
     encoders[i].setUnitsPerRadian(unitsPerRadian);
     encoders[i].setDirection(encoderDirs[i]);
 
-    pid.SetMode(AUTOMATIC);
+    pid.setOutputRange(0, 1);
+    pid.setStepTime(20);
   }
+  return -1;
 }
 bool DRIFTMotor::calibrate() {
   if (mode != CALIBRATION) {
@@ -43,6 +44,7 @@ bool DRIFTMotor::calibrate() {
     ModulatedServo::drive(-0.05);
   }
 
+  bool stopped = false;
   if (millis() - timeStart < 2500) {
     if (millis() - timeStart < 1000) {
       for (uint8_t i = 0; i < 2; i++) {
@@ -51,8 +53,9 @@ bool DRIFTMotor::calibrate() {
       }
     } else if (millis() - timeStart < 2000) {
       update();
-    } else {
+    } else if (!stopped) {
       ModulatedServo::drive(0);
+      stopped = true;
     }
     return false;
   } else {
@@ -60,7 +63,8 @@ bool DRIFTMotor::calibrate() {
       BusChain::selectBus(encoderBuses[i]);
       encoders[i].reset();
     }
-    mode = POWER;
+    pid.reset();
+    mode = MANUAL;
     return true;
   }
 }
@@ -77,26 +81,24 @@ void DRIFTMotor::update() {
     if (separationTarget < minSep) {
       separationTarget = minSep;
     }
-    pid.Compute();
-    drive(power);
+    drive(pid.update(separation - separationTarget));
   }
 }
-void DRIFTMotor::drive(double power) {
-  mode = POWER;
-  this->power = power;
+void DRIFTMotor::drive(float power) {
+  mode = MANUAL;
   ModulatedServo::drive(power);
 }
-void DRIFTMotor::setForceTarget(double force) {
+void DRIFTMotor::setForceTarget(float force) {
   mode = FORCE;
   separationTarget = force - spoolOffset;
 }
-void DRIFTMotor::setDisplacementTarget(double target) {
+void DRIFTMotor::setDisplacementTarget(float target) {
   mode = DISPLACEMENT;
   distTarget = target;
 }
 DRIFTMotor::Mode DRIFTMotor::getMode() {
   return mode;
 }
-double DRIFTMotor::getPosition(uint8_t encoder) {
+float DRIFTMotor::getPosition(uint8_t encoder) {
   return encoders[encoder].relativePosition();
 }

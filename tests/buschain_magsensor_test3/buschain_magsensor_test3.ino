@@ -12,7 +12,7 @@ byte delaytime = 1;
 const uint16_t sensorAddr = 0x5E;
 bool speed = true;
 
-uint16_t clockSpeed = 400000;
+uint32_t clockSpeed = 400000;
 
 uint8_t buffer[4];
 

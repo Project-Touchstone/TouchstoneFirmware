@@ -27,7 +27,7 @@ const float d = 0;
 // TrackRing objects
 TrackRing encoders[2];
 
-uint16_t clockSpeed = 400000;
+uint32_t clockSpeed = 400000;
 
 unsigned long timeStart = 0;
 

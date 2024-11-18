@@ -10,7 +10,7 @@
 // Tlv493d Opject
 Tlv493d magSensor = Tlv493d();
 
-uint16_t clockSpeed = 400000;
+uint32_t clockSpeed = 400000;
 
 void setup() {
   Serial.begin(115200);

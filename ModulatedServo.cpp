@@ -26,7 +26,7 @@ void IRAM_ATTR ModulatedServo::onTimer() {
   } else if (pulseCount == criticalCount) {
     servo.writeMicroseconds(pwmLevel[0]);
   }
-  pulseCount++;
+  pulseCount+=1;
   if (pulseCount == rangeInterval - 1) {
     pulseCount = 0;
   }
@@ -43,7 +43,7 @@ void ModulatedServo::attach(uint8_t pin) {
     timerAlarm(timer, servoInterval, true, 0);
 }
 
-void ModulatedServo::drive(double power) {
+void ModulatedServo::drive(float power) {
     if (power > 1) {
         power = 1;
     } else if (power < -1) {

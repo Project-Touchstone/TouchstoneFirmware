@@ -1,5 +1,6 @@
 #include <Touchstone.h>
 #include <ModulatedServo.h>
+#include <PID.h>
 #include <math.h>
 
 #define SER 4
@@ -15,13 +16,14 @@ const float unitsPerRadian = 1/PI;
 const float encoderTarget = 12;
 const float p = -0.2;
 const float i = 0;
-const float iCap = 0.1;
-const float d = 0;
+const float d = -0.1;
+const float iCap = 0;
+PID pid = PID(p, i, d, iCap);
 
 // TrackRing object
 TrackRing encoder = TrackRing();
 
-uint16_t clockSpeed = 1000000;
+uint32_t clockSpeed = 1000000;
 
 unsigned long timeStart = 0;
 
@@ -32,28 +34,6 @@ void driveServo(float power) {
 float prevError = 0;
 float sumError = 0;
 
-float pid(float error) {
-  float pError = error;
-  float iError = 0;
-  float dError = 0;
-
-  if (timeStart != 0) {
-    float stepTime = timeStart - micros();
-    if (abs(error) < iCap) {
-      sumError += error*stepTime;
-      iError = sumError;
-    } else {
-      sumError = 0;
-    }
-    dError = (error-prevError)/stepTime;
-  }
-  
-  timeStart = micros();
-  prevError = error;
-
-  return p*pError + i*iError + d*dError;
-}
-
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
@@ -61,6 +41,9 @@ void setup() {
   }
   
 	ModulatedServo::attach(servoPin);
+
+  pid.setOutputRange(0, 1);
+  pid.setStepTime(20);
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
   uint8_t err = BusChain::selectBus(targetBus);
@@ -94,11 +77,12 @@ void setup() {
   driveServo(0);
   delay(500);
   encoder.reset();
+  pid.reset();
   timeStart = 0;
 }
 
 void loop() {
   encoder.update();
-  driveServo(pid(encoder.relativePosition() - encoderTarget));
+  driveServo(pid.update(encoder.relativePosition() - encoderTarget));
   Serial.println(encoder.relativePosition());
 }

@@ -10,14 +10,14 @@
 #include "ModulatedServo.h"
 #include <TrackRing.h>
 #include <BusChain.h>
-#include <PID_v1.h>
+#include <PID.h>
 #include <math.h>
 
 class DRIFTMotor {
     private:
         TrackRing encoders[2];
         uint16_t encoderBuses[2];
-        const double unitsPerRadian = 1/PI;
+        const float unitsPerRadian = 1/PI;
         const int8_t encoderDirs[2] = {-1, 1};
 
         enum Mode {
@@ -25,32 +25,32 @@ class DRIFTMotor {
           CALIBRATION,
           FORCE,
           DISPLACEMENT,
-          POWER,
+          MANUAL,
         };
 
         Mode mode;
-        const double spoolOffset = 4.5;
-        const double minSep = 2.25;
-        double separation = 0;
-        double separationTarget = 0;
-        double distTarget = 0;
-        double power = 0;
-        const double p = -0.2;
-        const double i = 0;
-        const double d = 0;
-        PID pid = PID(&separation, &power, &separationTarget, p, i, d, P_ON_E, DIRECT);
+        const float spoolOffset = 4.5;
+        const float minSep = 3;
+        float separation = 0;
+        float separationTarget = 0;
+        float distTarget = 0;
+        const float p = -0.2;
+        const float i = 0;
+        const float d = 0;
+        const float iCap = 0;
+        PID pid = PID(p, i, d, iCap);
         
         uint64_t timeStart = 0;
     public:
         DRIFTMotor();
-        uint16_t attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t encoderBus1);
+        int16_t attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t encoderBus1);
         bool calibrate();
         void update();
-        void drive(double power);
-        void setForceTarget(double force);
-        void setDisplacementTarget(double target);
+        void drive(float power);
+        void setForceTarget(float force);
+        void setDisplacementTarget(float target);
         Mode getMode();
-        double getPosition(uint8_t encoder);
+        float getPosition(uint8_t encoder);
 };
 
 #endif
