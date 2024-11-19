@@ -10,6 +10,7 @@ DRIFTMotor::DRIFTMotor() {
 
 int16_t DRIFTMotor::attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t encoderBus1) {
   ModulatedServo::attach(servoPin);
+  ModulatedServo::setDirection(-1);
 
   for (uint8_t i = 0; i < 2; i++) {
     uint16_t bus;
@@ -41,7 +42,7 @@ bool DRIFTMotor::calibrate() {
   if (mode != CALIBRATION) {
     mode = CALIBRATION;
     timeStart = millis();
-    ModulatedServo::drive(-0.05);
+    ModulatedServo::drive(0.05);
   }
 
   bool stopped = false;
@@ -74,9 +75,9 @@ void DRIFTMotor::update() {
     encoders[i].update();
   }
   if (mode == FORCE || mode == DISPLACEMENT) {
-    separation = encoders[0].relativePosition() - encoders[1].relativePosition();
+    separation = encoders[1].relativePosition() - encoders[0].relativePosition();
     if (mode == DISPLACEMENT) {
-      separationTarget = (distTarget+spoolOffset) - encoders[1].relativePosition();
+      separationTarget = encoders[1].relativePosition() - (distTarget+spoolOffset);
     }
     if (separationTarget < minSep) {
       separationTarget = minSep;

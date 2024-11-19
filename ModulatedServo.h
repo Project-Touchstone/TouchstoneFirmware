@@ -13,6 +13,7 @@
 class ModulatedServo {
     private:
         static Servo servo;
+        static int8_t direction;
         static uint32_t servoInterval;
         static uint32_t rangeCenter;
         static uint32_t deadZone;
@@ -29,6 +30,7 @@ class ModulatedServo {
         static void IRAM_ATTR onTimer();
     public:
         static void attach(uint8_t pin);
+        static void setDirection(int8_t direction);
         static void drive(float power);
 };
 

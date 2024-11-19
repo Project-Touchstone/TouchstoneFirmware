@@ -18,7 +18,7 @@ class DRIFTMotor {
         TrackRing encoders[2];
         uint16_t encoderBuses[2];
         const float unitsPerRadian = 1/PI;
-        const int8_t encoderDirs[2] = {-1, 1};
+        const int8_t encoderDirs[2] = {1, -1};
 
         enum Mode {
           PENDING,

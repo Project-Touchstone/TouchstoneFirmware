@@ -11,7 +11,7 @@
 uint16_t encoderBuses[2] = {0, 1};
 uint32_t clockSpeed = 1000000;
 
-float criticalPoints[3] = {-5, -5.25, -5.5};
+float criticalPoints[3] = {5, 5.25, 5.5};
 float steepness = 3;
 
 DRIFTMotor motor;

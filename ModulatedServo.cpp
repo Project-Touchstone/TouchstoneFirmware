@@ -6,6 +6,7 @@
 #include "ModulatedServo.h"
 
 Servo ModulatedServo::servo = Servo();
+int8_t ModulatedServo::direction = 1;
 uint32_t ModulatedServo::servoInterval = 20000;
 uint32_t ModulatedServo::rangeCenter = 1500;
 uint32_t ModulatedServo::deadZone = 30;
@@ -43,7 +44,12 @@ void ModulatedServo::attach(uint8_t pin) {
     timerAlarm(timer, servoInterval, true, 0);
 }
 
+void ModulatedServo::setDirection(int8_t direction) {
+  this->direction = direction;
+}
+
 void ModulatedServo::drive(float power) {
+    power *= direction;
     if (power > 1) {
         power = 1;
     } else if (power < -1) {
