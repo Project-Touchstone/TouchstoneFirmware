@@ -29,14 +29,14 @@ class DRIFTMotor {
         };
 
         Mode mode;
-        const float spoolOffset = 4.5;
-        const float minSep = 3;
+        const float spoolOffset = 4.7;
+        const float minSep = 2.5;
         float separation = 0;
         float separationTarget = 0;
         float distTarget = 0;
-        const float p = -0.2;
+        const float p = -0.3;
         const float i = 0;
-        const float d = 0;
+        const float d = -0.2;
         const float iCap = 0;
         PID pid = PID(p, i, d, iCap);
         
@@ -51,6 +51,7 @@ class DRIFTMotor {
         void setDisplacementTarget(float target);
         Mode getMode();
         float getPosition(uint8_t encoder);
+        float getSeparation();
 };
 
 #endif

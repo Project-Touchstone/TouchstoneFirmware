@@ -102,3 +102,6 @@ DRIFTMotor::Mode DRIFTMotor::getMode() {
 float DRIFTMotor::getPosition(uint8_t encoder) {
   return encoders[encoder].relativePosition();
 }
+float DRIFTMotor::getSeparation() {
+  return separation;
+}

@@ -11,8 +11,8 @@
 uint16_t encoderBuses[2] = {0, 1};
 uint32_t clockSpeed = 1000000;
 
-float criticalPoints[3] = {-12, -12.25, -12.5};
-float steepness[2] = {3, 5};
+float criticalPoints[3] = {-5, -5.25, -5.5};
+float steepness[2] = {1, 2};
 
 DRIFTMotor motor;
 
@@ -50,5 +50,8 @@ void loop() {
   } else {
     motor.setForceTarget((criticalPoints[2]-motor.getPosition(1))*steepness[0]);
   }
-  Serial.println(motor.getPosition(1));
+  /*Serial.print("Pos: ");
+  Serial.print(motor.getPosition(1));
+  Serial.print("\tSep: ");
+  Serial.println(motor.getSeparation());*/
 }
