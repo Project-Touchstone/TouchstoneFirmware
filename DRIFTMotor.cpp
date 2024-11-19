@@ -77,7 +77,7 @@ void DRIFTMotor::update() {
   if (mode == FORCE || mode == DISPLACEMENT) {
     separation = encoders[1].relativePosition() - encoders[0].relativePosition();
     if (mode == DISPLACEMENT) {
-      separationTarget = encoders[1].relativePosition() - (distTarget+spoolOffset);
+      separationTarget = encoders[1].relativePosition() - (distTarget-spoolOffset);
     }
     if (separationTarget < minSep) {
       separationTarget = minSep;
