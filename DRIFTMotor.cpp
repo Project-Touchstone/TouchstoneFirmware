@@ -65,6 +65,7 @@ bool DRIFTMotor::calibrate() {
       encoders[i].reset();
     }
     pid.reset();
+    ServoController::reset();
     mode = MANUAL;
     return true;
   }

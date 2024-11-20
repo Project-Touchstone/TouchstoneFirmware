@@ -23,7 +23,7 @@ class ServoController {
         static uint32_t rangeLength;
         static uint16_t deadband;
         
-        static uint32_t pwmStart[MAX_SERVOS];
+        static int32_t pwmStart[MAX_SERVOS];
         static volatile bool pulseFlag;
         static volatile uint16_t pulseCount;
         static volatile uint64_t startTime;
@@ -35,6 +35,7 @@ class ServoController {
         static uint32_t microsToPWM(uint32_t micros);
     public:
         static void begin(uint8_t driverPort, uint8_t interruptPin);
+        static void reset();
         static void setPWM(uint8_t channel, uint32_t pulseLength);
         static void setPower(uint8_t channel, float power);
         static bool checkPulseFlag();

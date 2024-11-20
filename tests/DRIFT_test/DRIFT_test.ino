@@ -44,16 +44,18 @@ void setup() {
 }
 
 void loop() {
-  motor.update();
-  if (motor.getPosition(1) > criticalPoints[0]) {
-    motor.setDisplacementTarget(criticalPoints[0]);
-  } else if (motor.getPosition(1) > criticalPoints[1]) {
-    motor.setForceTarget((criticalPoints[0]-motor.getPosition(1))*steepness);
-  } else {
-    motor.setDisplacementTarget(criticalPoints[2]);
+  if (ServoController::checkPulseFlag()) {
+    motor.update();
+    if (motor.getPosition(1) > criticalPoints[0]) {
+      motor.setDisplacementTarget(criticalPoints[0]);
+    } else if (motor.getPosition(1) > criticalPoints[1]) {
+      motor.setForceTarget((criticalPoints[0]-motor.getPosition(1))*steepness);
+    } else {
+      motor.setDisplacementTarget(criticalPoints[2]);
+    }
+    Serial.print("Pos: ");
+    Serial.print(motor.getPosition(1));
+    Serial.print("\tSep: ");
+    Serial.println(motor.getSeparation());
   }
-  /*Serial.print("Pos: ");
-  Serial.print(motor.getPosition(1));
-  Serial.print("\tSep: ");
-  Serial.println(motor.getSeparation());*/
 }

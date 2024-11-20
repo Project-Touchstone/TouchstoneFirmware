@@ -13,7 +13,7 @@ uint32_t ServoController::deadZone = 30;
 uint32_t ServoController::rangeLength = 450;
 uint16_t ServoController::deadband = 5;
 
-uint32_t ServoController::pwmStart[MAX_SERVOS];
+int32_t ServoController::pwmStart[MAX_SERVOS];
 volatile bool ServoController::pulseFlag = false;
 volatile uint16_t ServoController::pulseCount = 0;
 volatile uint64_t ServoController::startTime;
@@ -40,9 +40,7 @@ uint32_t ServoController::microsToPWM(uint32_t micros) {
 void ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
     ServoController::driverPort = driverPort;
 
-    for (uint8_t i = 0; i < MAX_SERVOS; i++) {
-      pwmStart[i] = 0;
-    }
+    reset();
 
     attachInterrupt(interruptPin, &onPWMStart, RISING);
 
@@ -57,15 +55,22 @@ void ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
     }
 }
 
+void ServoController::reset() {
+  for (uint8_t i = 0; i < MAX_SERVOS; i++) {
+    pwmStart[i] = -1;
+  }
+}
+
 void ServoController::setPWM(uint8_t channel, uint32_t pulseLength) {
   uint32_t start;
-  if (pwmStart[channel] > 0) {
+  if (pwmStart[channel] > -1) {
     start = pwmStart[channel];
   } else {
     start = micros() - startTime + commsDelay;
     pwmStart[channel] = start;
   }
   uint32_t end = start + pulseLength;
+  end = end % 4096;
   channel = channel + 1;
   BusChain::selectPort(driverPort);
   pwmDriver.setPWM(channel, microsToPWM(start), microsToPWM(end));
