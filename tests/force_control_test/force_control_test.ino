@@ -23,8 +23,6 @@ const float d = 0;
 // TrackRing objects
 TrackRing encoders[2];
 
-uint32_t clockSpeed = 1000000;
-
 unsigned long timeStart = 0;
 
 void driveServo(float power) {
@@ -65,7 +63,7 @@ void setup() {
   // Allocates specific timer
 	ModulatedServo::attach(servoPin);
   
-  BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
+  BusChain::begin(SER, CLK, RCLK, 1);
   for (uint8_t i = 0; i < 2; i++) {
     uint8_t err = BusChain::selectPort(encoderPorts[i]);
     if (err != 0) {

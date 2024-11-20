@@ -13,7 +13,6 @@
 #define servoDriverPort 7
 
 const uint16_t encoderPorts[2] = {0, 1};
-const uint32_t clockSpeed = 1000000;
 
 const float criticalPoints[3] = {5, 5.25, 5.5};
 const float steepness = 3;
@@ -26,7 +25,7 @@ void setup() {
 
   }
   
-  BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
+  BusChain::begin(SER, CLK, RCLK, 1);
   ServoController::begin(servoDriverPort, interruptPin);
   int16_t err = motor.attach(servoChannel, encoderPorts[0], encoderPorts[1]);
   if (err > -1) {

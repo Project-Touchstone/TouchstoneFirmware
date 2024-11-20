@@ -23,8 +23,6 @@ PID pid = PID(p, i, d, iCap);
 // TrackRing object
 TrackRing encoder = TrackRing();
 
-uint32_t clockSpeed = 1000000;
-
 unsigned long timeStart = 0;
 
 void driveServo(float power) {
@@ -45,7 +43,7 @@ void setup() {
   pid.setOutputRange(0, 1);
   pid.setStepTime(20);
   
-  BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
+  BusChain::begin(SER, CLK, RCLK, 1);
   uint8_t err = BusChain::selectPort(targetPort);
   if (err != 0) {
     Serial.print("Error selecting I2C port: ");
