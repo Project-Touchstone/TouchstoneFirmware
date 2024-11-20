@@ -9,7 +9,7 @@
 
 #define servoPin 5
 
-#define targetBus 0
+#define targetPort 0
 
 const float unitsPerRadian = 1/PI;
 
@@ -46,9 +46,9 @@ void setup() {
   pid.setStepTime(20);
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
-  uint8_t err = BusChain::selectBus(targetBus);
+  uint8_t err = BusChain::selectPort(targetPort);
   if (err != 0) {
-    Serial.print("Error selecting I2C Bus: ");
+    Serial.print("Error selecting I2C port: ");
     Serial.println(err);
     while (true) {
       ;

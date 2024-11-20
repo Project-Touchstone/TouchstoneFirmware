@@ -6,7 +6,7 @@
 #define CLK 15
 #define RCLK 2
 
-#define targetBus 7
+#define targetPort 7
 
 // Tlv493d Opject
 Tlv493d magSensor = Tlv493d();
@@ -110,9 +110,9 @@ void setup() {
   }
   BusChain.begin(SER, CLK, RCLK, 1, clockSpeed);
 
-  int err = BusChain.selectBus(targetBus);
+  int err = BusChain.selectPort(targetPort);
   if (err != 0) {
-    Serial.print("Error selecting I2C Bus: ");
+    Serial.print("Error selecting I2C port: ");
     Serial.println(err);
     while (true) {
       ;

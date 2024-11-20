@@ -5,7 +5,7 @@
 #define CLK 4
 #define RCLK 5
 
-#define targetBus 7
+#define targetPort 7
 
 byte delaytime = 1;
 
@@ -31,9 +31,9 @@ void setup() {
 
   BusChain.begin(SER, CLK, RCLK, 1, clockSpeed);
 
-  int err = BusChain.selectBus(targetBus);
+  int err = BusChain.selectPort(targetPort);
   if (err != 0) {
-    Serial.print("Error selecting I2C Bus: ");
+    Serial.print("Error selecting I2C port: ");
     Serial.println(err);
     while (true) {
       ;

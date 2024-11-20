@@ -7,7 +7,7 @@
 #define CLK 4
 #define RCLK 5
 
-#define targetBus 6
+#define targetPort 6
 #define IMU_ADDRESS 0x68    //Change to the address of the IMU
 #define PERFORM_CALIBRATION //Comment to disable startup calibration
 MPU6050 IMU;               //Change to the name of any supported IMU! 
@@ -36,9 +36,9 @@ bool enabled[2] = {true, true};
 
 char strBuffer[32];
 
-int selectBus(uint8_t bus) {
-  Wire.beginTransmission(0x70 + addresses[bus/8]);
-  Wire.write(1 << bus%8);
+int selectPort(uint8_t port) {
+  Wire.beginTransmission(0x70 + addresses[port/8]);
+  Wire.write(1 << port%8);
   return Wire.endTransmission();
 }
 
@@ -114,9 +114,9 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
 
-  int err = selectBus(targetBus);
+  int err = selectPort(targetPort);
   if (err != 0) {
-    Serial.print("Error selecting I2C Bus: ");
+    Serial.print("Error selecting I2C port: ");
     Serial.println(err);
     while (true) {
       ;

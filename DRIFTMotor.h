@@ -7,7 +7,7 @@
 #define DRIFTMotor_h
 
 #include "Arduino.h"
-#include "ModulatedServo.h"
+#include "ServoController.h"
 #include <TrackRing.h>
 #include <BusChain.h>
 #include <PID.h>
@@ -15,9 +15,11 @@
 
 class DRIFTMotor {
     private:
+        uint8_t servoChannel;
         TrackRing encoders[2];
-        uint16_t encoderBuses[2];
+        uint8_t encoderPorts[2];
         const float unitsPerRadian = 1/PI;
+        const int8_t servoDir = -1;
         const int8_t encoderDirs[2] = {1, -1};
 
         enum Mode {
@@ -40,13 +42,13 @@ class DRIFTMotor {
         const float iCap = 0;
         PID pid = PID(p, i, d, iCap);
         
-        uint64_t timeStart = 0;
+        uint64_t startTime = 0;
     public:
         DRIFTMotor();
-        int16_t attach(uint8_t servoPin, uint16_t encoderBus0, uint16_t encoderBus1);
+        int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
         bool calibrate();
         void update();
-        void drive(float power);
+        void setPower(float power);
         void setForceTarget(float force);
         void setDisplacementTarget(float target);
         Mode getMode();

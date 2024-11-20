@@ -7,7 +7,7 @@
 #define CLK 4
 #define RCLK 5
 
-#define targetBus 7
+#define targetPort 7
 
 // Variable Declaration
 const byte addr = 0x5E; // default address of magnetic sensor 0x5E, 0x3E or 0X1F
@@ -30,9 +30,9 @@ bool enabled[2] = {true, true};
 
 char strBuffer[32];
 
-int selectBus(uint8_t bus) {
-  Wire.beginTransmission(0x70 + addresses[bus/8]);
-  Wire.write(1 << bus%8);
+int selectPort(uint8_t port) {
+  Wire.beginTransmission(0x70 + addresses[port/8]);
+  Wire.write(1 << port%8);
   return Wire.endTransmission();
 }
 
@@ -108,9 +108,9 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
 
-  int err = selectBus(targetBus);
+  int err = selectPort(targetPort);
   if (err != 0) {
-    Serial.print("Error selecting I2C Bus: ");
+    Serial.print("Error selecting I2C port: ");
     Serial.println(err);
     while (true) {
       ;

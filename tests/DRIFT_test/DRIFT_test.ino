@@ -1,4 +1,5 @@
 #include <DRIFTMotor.h>
+#include <ServoController.h>
 #include <BusChain.h>
 #include <math.h>
 
@@ -6,13 +7,16 @@
 #define CLK 15
 #define RCLK 2
 
-#define servoPin 5
+#define servoChannel 0
+#define interruptPin 18
 
-uint16_t encoderBuses[2] = {0, 1};
-uint32_t clockSpeed = 1000000;
+#define servoDriverPort 7
 
-float criticalPoints[3] = {5, 5.25, 5.5};
-float steepness = 3;
+const uint16_t encoderPorts[2] = {0, 1};
+const uint32_t clockSpeed = 1000000;
+
+const float criticalPoints[3] = {5, 5.25, 5.5};
+const float steepness = 3;
 
 DRIFTMotor motor;
 
@@ -23,7 +27,8 @@ void setup() {
   }
   
   BusChain::begin(SER, CLK, RCLK, 1, clockSpeed);
-  int16_t err = motor.attach(servoPin, encoderBuses[0], encoderBuses[1]);
+  ServoController::begin(servoDriverPort, interruptPin);
+  int16_t err = motor.attach(servoChannel, encoderPorts[0], encoderPorts[1]);
   if (err > -1) {
     Serial.print("Error connecting to encoder port ");
     Serial.println(err);

@@ -8,10 +8,10 @@
 #define CLK 4
 #define RCLK 5
 
-#define magBus 7
+#define magPort 7
 Tlv493d magSensor = Tlv493d();
 
-#define imuBus 6
+#define imuPort 6
 #define IMU_ADDRESS 0x68    //Change to the address of the IMU
 #define PERFORM_CALIBRATION //Comment to disable startup calibration
 MPU6050 IMU;               //Change to the name of any supported IMU! 
@@ -40,9 +40,9 @@ bool enabled[2] = {true, true};
 
 char strBuffer[32];
 
-int selectBus(uint8_t bus) {
-  Wire.beginTransmission(0x70 + addresses[bus/8]);
-  Wire.write(1 << bus%8);
+int selectPort(uint8_t port) {
+  Wire.beginTransmission(0x70 + addresses[port/8]);
+  Wire.write(1 << port%8);
   return Wire.endTransmission();
 }
 
@@ -118,9 +118,9 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
 
-  int err = selectBus(magBus);
+  int err = selectPort(magPort);
   if (err != 0) {
-    Serial.print("Error selecting magnetic sensor Bus: ");
+    Serial.print("Error selecting magnetic sensor port: ");
     Serial.println(err);
     while (true) {
       ;
@@ -130,9 +130,9 @@ void setup() {
   magSensor.begin();
   Serial.println("3D Magnetic Sensor Test");
 
-  err = selectBus(imuBus);
+  err = selectPort(imuPort);
   if (err != 0) {
-    Serial.print("Error selecting imu Bus: ");
+    Serial.print("Error selecting imu port: ");
     Serial.println(err);
     while (true) {
       ;
@@ -209,7 +209,7 @@ void setup() {
 }
 
 void loop() {
-  selectBus(magBus);
+  selectPort(magPort);
 
   magSensor.updateData();
   delay(100);
@@ -224,7 +224,7 @@ void loop() {
   Serial.print(magSensor.getTemp());
   Serial.println(" C");
    
-  selectBus(imuBus);
+  selectPort(imuPort);
 
   IMU.update();
   IMU.getAccel(&accelData);
