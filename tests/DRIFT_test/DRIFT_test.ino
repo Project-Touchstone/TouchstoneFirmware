@@ -10,7 +10,7 @@
 #define servoChannel 0
 #define interruptPin 18
 
-#define servoDriverPort 7
+#define servoDriverPort 10
 
 const uint16_t encoderPorts[2] = {0, 1};
 
