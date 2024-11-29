@@ -17,26 +17,27 @@ class ServoController {
     private:
         static Adafruit_PWMServoDriver pwmDriver;
         static uint8_t driverPort;
-        static uint32_t pwmFreq;
-        static uint32_t rangeCenter;
-        static uint32_t deadZone;
-        static uint32_t rangeLength;
-        static uint16_t deadband;
+        static const uint16_t pwmFreq;
+        static const uint32_t oscillatorFreq;
+        static const uint16_t rangeCenter;
+        static const uint16_t deadZone;
+        static const uint16_t rangeLength;
+        static const uint16_t deadband;
+        static const uint16_t deadbandRes;
         
-        static int32_t pwmStart[MAX_SERVOS];
+        static int16_t pwmStart[MAX_SERVOS];
+        static volatile uint8_t pulseCount;
         static volatile bool pulseFlag;
-        static volatile uint16_t pulseCount;
         static volatile uint64_t startTime;
-        static uint32_t commsDelay;
+        static uint16_t commsDelay;
 
         static void IRAM_ATTR onPWMStart();
         static portMUX_TYPE interruptMux;
 
-        static uint32_t microsToPWM(uint32_t micros);
     public:
         static void begin(uint8_t driverPort, uint8_t interruptPin);
         static void reset();
-        static void setPWM(uint8_t channel, uint32_t pulseLength);
+        static void setPWM(uint8_t channel, uint16_t pulseLength);
         static void setPower(uint8_t channel, float power);
         static bool checkPulseFlag();
 };
