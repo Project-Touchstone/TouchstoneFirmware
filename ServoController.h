@@ -35,7 +35,7 @@ class ServoController {
         static portMUX_TYPE interruptMux;
 
     public:
-        static void begin(uint8_t driverPort, uint8_t interruptPin);
+        static bool begin(uint8_t driverPort, uint8_t interruptPin);
         static void reset();
         static void setPWM(uint8_t channel, uint16_t pulseLength);
         static void setPower(uint8_t channel, float power);

@@ -16,8 +16,6 @@ const uint16_t ServoController::deadband = 1;
 const uint16_t ServoController::deadbandRes = 20;
 
 int16_t ServoController::pwmStart[MAX_SERVOS];
-int16_t ServoController::basePWM[MAX_SERVOS];
-int8_t ServoController::criticalCount[MAX_SERVOS];
 volatile uint8_t ServoController::pulseCount = 0;
 volatile bool ServoController::pulseFlag = false;
 volatile uint64_t ServoController::startTime;
@@ -36,7 +34,7 @@ void IRAM_ATTR ServoController::onPWMStart() {
   portEXIT_CRITICAL_ISR(&interruptMux);
 }
 
-void ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
+bool ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
   ServoController::driverPort = driverPort;
 
   reset();
@@ -59,7 +57,6 @@ void ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
 void ServoController::reset() {
   for (uint8_t i = 0; i < MAX_SERVOS; i++) {
     pwmStart[i] = -1;
-    basePWM[i] = -1;
   }
 }
 
@@ -77,7 +74,7 @@ void ServoController::setPWM(uint8_t channel, uint16_t pulseLength) {
   if (pulseLength > 0) {
     pwmDriver.setPWM(channel, start, end);
   } else {
-    pwmDriver.setPWM(4096, 0);
+    pwmDriver.setPWM(channel, 4096, 0);
   }
 }
 
