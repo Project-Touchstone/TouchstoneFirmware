@@ -10,9 +10,9 @@
 #define servoChannel 0
 #define interruptPin 18
 
-#define servoDriverPort 10
+#define servoDriverPort 11
 
-const uint16_t encoderPorts[2] = {0, 1};
+const uint16_t encoderPorts[2] = {7, 6};
 
 const float criticalPoints[3] = {5, 5.25, 5.5};
 const float steepness = 3;
@@ -25,8 +25,13 @@ void setup() {
 
   }
   
-  BusChain::begin(SER, CLK, RCLK, 1);
-  ServoController::begin(servoDriverPort, interruptPin);
+  BusChain::begin(SER, CLK, RCLK, 2);
+  if (!ServoController::begin(servoDriverPort)) {
+    Serial.println("Error connecting to servo driver");
+    while (true) {
+      
+    }
+  }
   int16_t err = motor.attach(servoChannel, encoderPorts[0], encoderPorts[1]);
   if (err > -1) {
     Serial.print("Error connecting to encoder port ");

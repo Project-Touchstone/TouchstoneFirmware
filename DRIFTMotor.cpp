@@ -33,7 +33,6 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
     encoders[i].setDirection(encoderDirs[i]);
 
     pid.setOutputRange(0, 1);
-    pid.setStepTime(20);
   }
   return -1;
 }
