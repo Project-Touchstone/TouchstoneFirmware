@@ -8,7 +8,7 @@
 #define RCLK 2
 
 #define servoChannel 0
-#define interruptPin 18
+#define interruptPin 5
 
 #define servoDriverPort 11
 
@@ -26,7 +26,7 @@ void setup() {
   }
   
   BusChain::begin(SER, CLK, RCLK, 2);
-  if (!ServoController::begin(servoDriverPort)) {
+  if (!ServoController::begin(servoDriverPort, interruptPin)) {
     Serial.println("Error connecting to servo driver");
     while (true) {
       
@@ -50,17 +50,19 @@ void setup() {
 
 void loop() {
   if (ServoController::checkPulseFlag()) {
-    motor.update();
-    if (motor.getPosition(1) > criticalPoints[0]) {
+    if (motor.getPosition(1) < criticalPoints[0]) {
       motor.setDisplacementTarget(criticalPoints[0]);
-    } else if (motor.getPosition(1) > criticalPoints[1]) {
-      motor.setForceTarget((criticalPoints[0]-motor.getPosition(1))*steepness);
+    } else if (motor.getPosition(1) < criticalPoints[1]) {
+      motor.setForceTarget((motor.getPosition(1)-criticalPoints[0])*steepness);
     } else {
       motor.setDisplacementTarget(criticalPoints[2]);
     }
+    motor.updatePID();
     Serial.print("Pos: ");
     Serial.print(motor.getPosition(1));
     Serial.print("\tSep: ");
     Serial.println(motor.getSeparation());
+  } else {
+    motor.updateEncoders();
   }
 }

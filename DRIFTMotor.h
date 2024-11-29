@@ -47,7 +47,8 @@ class DRIFTMotor {
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
         bool calibrate();
-        void update();
+        void updatePID();
+        void updateEncoders();
         void setPower(float power);
         void setForceTarget(float force);
         void setDisplacementTarget(float target);

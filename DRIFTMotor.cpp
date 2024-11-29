@@ -32,7 +32,7 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
     encoders[i].setUnitsPerRadian(unitsPerRadian);
     encoders[i].setDirection(encoderDirs[i]);
 
-    pid.setOutputRange(0, 1);
+    pid.setOutputRange(-1, 1);
   }
   return -1;
 }
@@ -51,7 +51,7 @@ bool DRIFTMotor::calibrate() {
         encoders[i].calibrate();
       }
     } else if (millis() - startTime < 2000) {
-      update();
+      updateEncoders();
     } else if (!stopped) {
       setPower(0);
       mode = CALIBRATION;
@@ -69,11 +69,14 @@ bool DRIFTMotor::calibrate() {
     return true;
   }
 }
-void DRIFTMotor::update() {
+void DRIFTMotor::updateEncoders() {
   for (uint8_t i = 0; i < 2; i++) {
     BusChain::selectPort(encoderPorts[i]);
     encoders[i].update();
   }
+}
+
+void DRIFTMotor::updatePID() {
   if (mode == FORCE || mode == DISPLACEMENT) {
     separation = encoders[1].relativePosition() - encoders[0].relativePosition();
     if (mode == DISPLACEMENT) {
@@ -82,9 +85,10 @@ void DRIFTMotor::update() {
     if (separationTarget < minSep) {
       separationTarget = minSep;
     }
-    setPower(pid.update(separation - separationTarget));
+    setPower(pid.update(separationTarget - separation));
   }
 }
+
 void DRIFTMotor::setPower(float power) {
   mode = MANUAL;
   ServoController::setPower(servoChannel, power*servoDir);
