@@ -65,7 +65,8 @@ void ServoController::setPWM(uint8_t channel, uint16_t pulseLength) {
   if (pwmStart[channel] > -1) {
     start = pwmStart[channel];
   } else {
-    start = micros() - startTime + commsDelay;
+    uint32_t timeDiff = map((micros() - startTime), 0, 20000, 0, 4096);
+    start = timeDiff + commsDelay;
     pwmStart[channel] = start;
   }
   uint16_t end = start + pulseLength;

@@ -48,6 +48,8 @@ void setup() {
   }
 }
 
+uint64_t startTime;
+
 void loop() {
   if (ServoController::checkPulseFlag()) {
     if (motor.getPosition(1) < criticalPoints[0]) {
@@ -58,10 +60,10 @@ void loop() {
       motor.setDisplacementTarget(criticalPoints[2]);
     }
     motor.updatePID();
-    Serial.print("Pos: ");
+    /*Serial.print("Pos: ");
     Serial.print(motor.getPosition(1));
     Serial.print("\tSep: ");
-    Serial.println(motor.getSeparation());
+    Serial.println(motor.getSeparation());*/
   } else {
     motor.updateEncoders();
   }

@@ -54,7 +54,6 @@ bool DRIFTMotor::calibrate() {
       updateEncoders();
     } else if (!stopped) {
       setPower(0);
-      mode = CALIBRATION;
       stopped = true;
     }
     return false;
@@ -85,12 +84,12 @@ void DRIFTMotor::updatePID() {
     if (separationTarget < minSep) {
       separationTarget = minSep;
     }
+    
     setPower(pid.update(separationTarget - separation));
   }
 }
 
 void DRIFTMotor::setPower(float power) {
-  mode = MANUAL;
   ServoController::setPower(servoChannel, power*servoDir);
 }
 void DRIFTMotor::setForceTarget(float force) {
@@ -103,6 +102,9 @@ void DRIFTMotor::setDisplacementTarget(float target) {
 }
 DRIFTMotor::Mode DRIFTMotor::getMode() {
   return mode;
+}
+void DRIFTMotor::setMode(Mode mode) {
+  this->mode = mode;
 }
 float DRIFTMotor::getPosition(uint8_t encoder) {
   return encoders[encoder].relativePosition();
