@@ -7,7 +7,7 @@
 #define CLK 15
 #define RCLK 2
 
-#define servoChannel 0
+#define servoChannel 1
 #define interruptPin 5
 
 #define servoDriverPort 11
@@ -51,6 +51,7 @@ void setup() {
 uint64_t startTime;
 
 void loop() {
+  startTime = micros();
   if (ServoController::checkPulseFlag()) {
     if (motor.getPosition(1) < criticalPoints[0]) {
       motor.setDisplacementTarget(criticalPoints[0]);
@@ -67,4 +68,5 @@ void loop() {
   } else {
     motor.updateEncoders();
   }
+  Serial.println(micros() - startTime);
 }

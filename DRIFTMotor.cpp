@@ -37,13 +37,12 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
   return -1;
 }
 bool DRIFTMotor::calibrate() {
-  if (mode != CALIBRATION) {
+  if (mode == PENDING) {
     startTime = millis();
     setPower(0.05);
     mode = CALIBRATION;
   }
 
-  bool stopped = false;
   if (millis() - startTime < 2500) {
     if (millis() - startTime < 1000) {
       for (uint8_t i = 0; i < 2; i++) {
@@ -52,12 +51,11 @@ bool DRIFTMotor::calibrate() {
       }
     } else if (millis() - startTime < 2000) {
       updateEncoders();
-    } else if (!stopped) {
+    } else {
       setPower(0);
-      stopped = true;
     }
     return false;
-  } else {
+  } else if (mode == CALIBRATION) {
     for (uint8_t i = 0; i < 2; i++) {
       BusChain::selectPort(encoderPorts[i]);
       encoders[i].reset();
@@ -65,8 +63,8 @@ bool DRIFTMotor::calibrate() {
     pid.reset();
     ServoController::reset();
     mode = MANUAL;
-    return true;
   }
+  return true;
 }
 void DRIFTMotor::updateEncoders() {
   for (uint8_t i = 0; i < 2; i++) {
@@ -94,7 +92,11 @@ void DRIFTMotor::setPower(float power) {
 }
 void DRIFTMotor::setForceTarget(float force) {
   mode = FORCE;
-  separationTarget = spoolOffset + force;
+  if (force > 0) {
+    separationTarget = spoolOffset + force;
+  } else {
+    separationTarget = minSep;
+  }
 }
 void DRIFTMotor::setDisplacementTarget(float target) {
   mode = DISPLACEMENT;
