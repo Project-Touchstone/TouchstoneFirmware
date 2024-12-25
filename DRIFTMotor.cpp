@@ -43,13 +43,13 @@ bool DRIFTMotor::calibrate() {
     mode = CALIBRATION;
   }
 
-  if (millis() - startTime < 2500) {
-    if (millis() - startTime < 1000) {
+  if (millis() - startTime < calibrationTiming[2]) {
+    if (millis() - startTime < calibrationTiming[0]) {
       for (uint8_t i = 0; i < 2; i++) {
         BusChain::selectPort(encoderPorts[i]);
         encoders[i].calibrate();
       }
-    } else if (millis() - startTime < 2000) {
+    } else if (millis() - startTime < calibrationTiming[1]) {
       updateEncoders();
     } else {
       updateEncoders();

@@ -21,6 +21,7 @@ class DRIFTMotor {
         const float unitsPerRadian = 1/PI;
         const int8_t servoDir = -1;
         const int8_t encoderDirs[2] = {1, -1};
+        const uint16_t calibrationTiming[3] = {1500, 3000, 3500};
 
         enum Mode {
           PENDING,
