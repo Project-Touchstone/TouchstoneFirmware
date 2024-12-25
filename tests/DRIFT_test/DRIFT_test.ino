@@ -7,12 +7,12 @@
 #define CLK 15
 #define RCLK 2
 
-#define servoChannel 1
+#define servoChannel 0
 #define interruptPin 5
 
 #define servoDriverPort 11
 
-const uint16_t encoderPorts[2] = {7, 6};
+const uint16_t encoderPorts[2] = {7, 12};
 
 const float criticalPoints[3] = {5, 5.25, 5.5};
 const float steepness = 3;
@@ -61,12 +61,12 @@ void loop() {
       motor.setDisplacementTarget(criticalPoints[2]);
     }
     motor.updatePID();
-    /*Serial.print("Pos: ");
+    Serial.print("Pos: ");
     Serial.print(motor.getPosition(1));
     Serial.print("\tSep: ");
-    Serial.println(motor.getSeparation());*/
+    Serial.println(motor.getSeparation());
   } else {
     motor.updateEncoders();
   }
-  Serial.println(micros() - startTime);
+  //Serial.println(micros() - startTime);
 }

@@ -25,17 +25,17 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
     if (BusChain::selectPort(port) != 0) {
       return port;
     }
-    
     if (encoders[i].begin()) {
       return port;
     }
     encoders[i].setUnitsPerRadian(unitsPerRadian);
     encoders[i].setDirection(encoderDirs[i]);
-
-    pid.setOutputRange(-1, 1);
   }
+
+  pid.setOutputRange(-1, 1);
   return -1;
 }
+
 bool DRIFTMotor::calibrate() {
   if (mode == PENDING) {
     startTime = millis();
@@ -52,6 +52,7 @@ bool DRIFTMotor::calibrate() {
     } else if (millis() - startTime < 2000) {
       updateEncoders();
     } else {
+      updateEncoders();
       setPower(0);
     }
     return false;
@@ -61,7 +62,6 @@ bool DRIFTMotor::calibrate() {
       encoders[i].reset();
     }
     pid.reset();
-    ServoController::reset();
     mode = MANUAL;
   }
   return true;

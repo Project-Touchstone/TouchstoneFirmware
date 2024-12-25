@@ -38,8 +38,6 @@ void setup() {
       }
     }
   }
-  
-  Serial.println("DRIFT Motor Test");
 
   bool calibrated = false;
   while (!calibrated) {
@@ -48,9 +46,13 @@ void setup() {
       calibrated &= motors[i].calibrate();
     }
   }
+  ServoController::reset();
 }
 
+uint64_t startTime;
+
 void loop() {
+  //startTime = micros();
   if (ServoController::checkPulseFlag()) {
     for (uint8_t i = 0; i < 3; i++) {
       motors[i].setForceTarget(0);
@@ -64,4 +66,5 @@ void loop() {
     }
     //Serial.println();
   }
+  //Serial.println(micros() - startTime);
 }

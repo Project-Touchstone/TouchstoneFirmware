@@ -30,7 +30,7 @@ class DRIFTMotor {
           MANUAL,
         };
 
-        Mode mode;
+        Mode mode = PENDING;
         const float spoolOffset = 4.85;
         const float minSep = 2.5;
         float separation = 0;
