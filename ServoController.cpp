@@ -58,6 +58,7 @@ void ServoController::reset() {
   for (uint8_t i = 0; i < MAX_SERVOS; i++) {
     pwmStart[i] = -1;
   }
+  pulseFlag = false;
 }
 
 void ServoController::setPWM(uint8_t channel, uint16_t pulseLength) {

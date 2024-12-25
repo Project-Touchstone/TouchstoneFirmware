@@ -47,24 +47,30 @@ void setup() {
     }
   }
   ServoController::reset();
+  while (!ServoController::checkPulseFlag()) {
+    
+  }
+  updateMotors();
+}
+
+void updateMotors() {
+  for (uint8_t i = 0; i < 3; i++) {
+    motors[i].updateEncoders();
+    motors[i].setForceTarget(0);
+    motors[i].updatePID();
+  }
 }
 
 uint64_t startTime;
 
 void loop() {
-  //startTime = micros();
-  if (ServoController::checkPulseFlag()) {
-    for (uint8_t i = 0; i < 3; i++) {
-      motors[i].setForceTarget(0);
-      motors[i].updatePID();
+  for (uint8_t i = 0; i < 3; i++) {
+    if (ServoController::checkPulseFlag()) {
+      updateMotors();
     }
-  } else {
-    for (uint8_t i = 0; i < 3; i++) {
-      motors[i].updateEncoders();
-      /*Serial.print(motors[i].getPosition(1));
-      Serial.print("\t");*/
-    }
-    //Serial.println();
+    motors[i].updateEncoders();
+    /*Serial.print(motors[i].getPosition(1));
+    Serial.print("\t");*/
   }
-  //Serial.println(micros() - startTime);
+  //Serial.println();
 }
