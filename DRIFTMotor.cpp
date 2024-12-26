@@ -42,9 +42,6 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
 		encoders[i].setUnitsPerRadian(unitsPerRadian);
 		encoders[i].setDirection(encoderDirs[i]);
 	}
-
-	//PID signal range
-	pid.setOutputRange(-1, 1);
 	return -1;
 }
 
@@ -55,7 +52,7 @@ bool DRIFTMotor::calibrate() {
 	if (mode == PENDING) {
 		//Starts timer and begins unspooling motor at a slow speed
 		startTime = millis();
-		setPower(0.05);
+		setPower(calibrationPower);
 		//Sets mode to calibration
 		mode = CALIBRATION;
 	}
@@ -78,8 +75,6 @@ bool DRIFTMotor::calibrate() {
 			BusChain::selectPort(encoderPorts[i]);
 			encoders[i].reset();
 		}
-		//Resets PID controller
-		pid.reset();
 		//Ends calibration mode
 		mode = MANUAL;
 	}
@@ -95,33 +90,46 @@ void DRIFTMotor::updateEncoders() {
 }
 
 /// @brief Updates servo PID controller
-void DRIFTMotor::updatePID() {
+void DRIFTMotor::updateMPC() {
 	//Updates sampled encoder velocities
 	for (uint8_t i = 0; i < 2; i++) {
 		velocities[i] = encoders[i].sampledVelocity();
 	}
+
+	//Updates motor power / velocity correlation
+	if (lastPower != 0) {
+		velocityCorrelation = lastPower/velocities[0];
+	}
+
 	//PID cannot be updated during calibration
 	if (mode == FORCE || mode == DISPLACEMENT) {
 		//Separation is distance between spool and servo encoders
-		separation = encoders[1].relativePosition() - encoders[0].relativePosition();
+		separation = getPosition(1) - getPosition(0);
 		if (mode == DISPLACEMENT) {
 			//Separation target is set to enforce desired displacement
-			separationTarget = encoders[1].relativePosition() - (distTarget-spoolOffset);
+			separationTarget = getPosition(1) - (distTarget-spoolOffset);
 		}
 		if (separationTarget < minSep) {
 			//A minimum separation prevents string from becoming slack
 			separationTarget = minSep;
 		}
+
+		//Gets predicted position of spool encoder at the end of the horizon time
+		float predictedPos = getPosition(1) + getVelocity(1)*horizonTime/1000000;
+
+		//Gets necessary spool velocity to reach separation target
+		float necessaryVel = ((predictedPos-separationTarget)-getPosition(0))/(horizonTime/1000000);
 		
-		//Sets power based on PID signal
-		setPower(pid.update(separationTarget - separation));
+		//Sets power based on necessary velocity
+		setPower(necessaryVel*velocityCorrelation);
 	}
 }
 
 /// @brief Sets servo power
 /// @param power + (unspooling), - (spooling)
 void DRIFTMotor::setPower(float power) {
-  ServoController::setPower(servoChannel, power*servoDir);
+	lastPower = power;
+  	ServoController::setPower(servoChannel, power*servoDir);
 }
 
 /// @brief Sets motor force applied

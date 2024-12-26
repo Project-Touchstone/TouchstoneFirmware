@@ -10,7 +10,6 @@
 #include "ServoController.h"
 #include <TrackRing.h>
 #include <BusChain.h>
-#include <PID.h>
 #include <math.h>
 
 class DRIFTMotor {
@@ -27,11 +26,17 @@ class DRIFTMotor {
         const int8_t servoDir = -1;
 		//Encoder directions
         const int8_t encoderDirs[2] = {1, -1};
+		//Motor power during calibration
+		const float calibrationPower = 0.05;
 		//First phase is active calibration, second phase is passive calibration
         const uint16_t calibrationTiming[2] = {3000, 3500};
 
 		//Sampled velocities of encoders
         float velocities[2];
+		//Last power set on servo
+		float lastPower = 0;
+		//Motor power per units per second velocity
+		float velocityCorrelation = 0;
 
 		//Operating mode
         enum Mode {
@@ -55,12 +60,8 @@ class DRIFTMotor {
 		//Distance target for spool encoder
         float distTarget = 0;
 
-		//PID parameters
-        const float p = -0.4;
-        const float i = 0;
-        const float d = -0.2;
-        const float iCap = 0;
-        PID pid = PID(p, i, d, iCap);
+		//Horizon time for model predictive control
+		uint32_t horizonTime = 20000;
         
 		//Calibration timer start
         uint64_t startTime = 0;
@@ -68,7 +69,7 @@ class DRIFTMotor {
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
         bool calibrate();
-        void updatePID();
+        void updateMPC();
         void updateEncoders();
         void setPower(float power);
         void setForceTarget(float force);

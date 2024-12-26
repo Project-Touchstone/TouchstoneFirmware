@@ -44,7 +44,9 @@ void setup() {
   Serial.println("DRIFT Motor Test");
 
   while (!motor.calibrate()) {
-
+    if (ServoController::checkPulseFlag()) {
+      motor.updateMPC();
+    }
   }
   ServoController::reset();
   while (!ServoController::checkPulseFlag()) {
@@ -62,7 +64,7 @@ void updateMotor() {
   } else {
     motor.setDisplacementTarget(criticalPoints[2]);
   }
-  motor.updatePID();
+  motor.updateMPC();
   Serial.print("Pos: ");
   Serial.print(motor.getPosition(1));
   Serial.print("\tVelocity: ");
