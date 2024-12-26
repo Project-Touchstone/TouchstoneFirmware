@@ -103,19 +103,19 @@ void DRIFTMotor::updateMPC() {
 
 	//PID cannot be updated during calibration
 	if (mode == FORCE || mode == DISPLACEMENT) {
+		//Gets predicted position of spool encoder at the end of the horizon time
+		float predictedPos = getPosition(1) + getVelocity(1)*horizonTime/1000000;
+
 		//Separation is distance between spool and servo encoders
 		separation = getPosition(1) - getPosition(0);
 		if (mode == DISPLACEMENT) {
 			//Separation target is set to enforce desired displacement
-			separationTarget = getPosition(1) - (distTarget-spoolOffset);
+			separationTarget = predictedPos - (distTarget-spoolOffset);
 		}
 		if (separationTarget < minSep) {
 			//A minimum separation prevents string from becoming slack
 			separationTarget = minSep;
 		}
-
-		//Gets predicted position of spool encoder at the end of the horizon time
-		float predictedPos = getPosition(1) + getVelocity(1)*horizonTime/1000000;
 
 		//Gets necessary spool velocity to reach separation target
 		float necessaryVel = ((predictedPos-separationTarget)-getPosition(0))/(horizonTime/1000000);
