@@ -96,6 +96,10 @@ void DRIFTMotor::updateEncoders() {
 
 /// @brief Updates servo PID controller
 void DRIFTMotor::updatePID() {
+	//Updates sampled encoder velocities
+	for (uint8_t i = 0; i < 2; i++) {
+		velocities[i] = encoders[i].sampledVelocity();
+	}
 	//PID cannot be updated during calibration
 	if (mode == FORCE || mode == DISPLACEMENT) {
 		//Separation is distance between spool and servo encoders
@@ -161,7 +165,7 @@ float DRIFTMotor::getPosition(uint8_t encoder) {
 /// @param encoder 0 (servo encoder), 1 (spool encoder)
 /// @return velocity in units per second
 float DRIFTMotor::getVelocity(uint8_t encoder) {
-  return encoders[encoder].getVelocity();
+  return velocities[encoder];
 }
 
 /// @brief Gets separation between spool and servo encoders

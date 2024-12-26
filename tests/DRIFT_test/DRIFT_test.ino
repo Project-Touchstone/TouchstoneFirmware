@@ -7,7 +7,7 @@
 #define CLK 15
 #define RCLK 2
 
-#define servoChannel 0
+#define servoChannel 1
 #define interruptPin 5
 
 #define servoDriverPort 11

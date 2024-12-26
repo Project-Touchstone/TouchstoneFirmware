@@ -23,6 +23,8 @@ class DRIFTMotor {
         const int8_t encoderDirs[2] = {1, -1};
         const uint16_t calibrationTiming[2] = {3000, 3500};
 
+        float velocities[2];
+
         enum Mode {
           PENDING,
           CALIBRATION,
