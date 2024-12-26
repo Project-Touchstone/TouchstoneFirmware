@@ -12,7 +12,7 @@
 
 #define servoDriverPort 11
 
-const uint16_t encoderPorts[2] = {7, 12};
+const uint16_t encoderPorts[2] = {7, 6};
 
 const float criticalPoints[3] = {5, 5.25, 5.5};
 const float steepness = 3;
@@ -46,27 +46,36 @@ void setup() {
   while (!motor.calibrate()) {
 
   }
+  ServoController::reset();
+  while (!ServoController::checkPulseFlag()) {
+
+  }
+  updateMotor();
+}
+
+void updateMotor() {
+  motor.updateEncoders();
+  if (motor.getPosition(1) < criticalPoints[0]) {
+    motor.setDisplacementTarget(criticalPoints[0]);
+  } else if (motor.getPosition(1) < criticalPoints[1]) {
+    motor.setForceTarget((motor.getPosition(1)-criticalPoints[0])*steepness);
+  } else {
+    motor.setDisplacementTarget(criticalPoints[2]);
+  }
+  motor.updatePID();
+  Serial.print("Pos: ");
+  Serial.print(motor.getPosition(1));
+  Serial.print("\tVelocity: ");
+  Serial.println(motor.getVelocity(1));
 }
 
 uint64_t startTime;
 
 void loop() {
-  startTime = micros();
+  //startTime = micros();
   if (ServoController::checkPulseFlag()) {
-    if (motor.getPosition(1) < criticalPoints[0]) {
-      motor.setDisplacementTarget(criticalPoints[0]);
-    } else if (motor.getPosition(1) < criticalPoints[1]) {
-      motor.setForceTarget((motor.getPosition(1)-criticalPoints[0])*steepness);
-    } else {
-      motor.setDisplacementTarget(criticalPoints[2]);
-    }
-    motor.updatePID();
-    Serial.print("Pos: ");
-    Serial.print(motor.getPosition(1));
-    Serial.print("\tSep: ");
-    Serial.println(motor.getSeparation());
-  } else {
-    motor.updateEncoders();
+    updateMotor();
   }
+  motor.updateEncoders();
   //Serial.println(micros() - startTime);
 }

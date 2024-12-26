@@ -1,6 +1,6 @@
-/*
-  DRIFTMotor.h - Dynamic resistance integrated force-feedback and tracking motor
-  Created by Carson G. Ray
+/**
+ * DRIFTMotor.h - Dynamic resistance integrated force-feedback and tracking motor
+ * Created by Carson G. Ray
 */
 
 #ifndef DRIFTMotor_h
@@ -21,7 +21,7 @@ class DRIFTMotor {
         const float unitsPerRadian = 1/PI;
         const int8_t servoDir = -1;
         const int8_t encoderDirs[2] = {1, -1};
-        const uint16_t calibrationTiming[3] = {1500, 3000, 3500};
+        const uint16_t calibrationTiming[2] = {3000, 3500};
 
         enum Mode {
           PENDING,
@@ -56,6 +56,7 @@ class DRIFTMotor {
         Mode getMode();
         void setMode(Mode mode);
         float getPosition(uint8_t encoder);
+        float getVelocity(uint8_t encoder);
         float getSeparation();
 };
 
