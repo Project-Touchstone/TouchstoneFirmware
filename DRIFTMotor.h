@@ -33,10 +33,6 @@ class DRIFTMotor {
 
 		//Sampled velocities of encoders
         float velocities[2];
-		//Last power set on servo
-		float lastPower = 0;
-		//Motor power per units per second velocity
-		float velocityCorrelation = 0;
 
 		//Operating mode
         enum Mode {
@@ -60,6 +56,8 @@ class DRIFTMotor {
 		//Distance target for spool encoder
         float distTarget = 0;
 
+		//Velocity correlation for model predictive control
+		float velocityCorrelation = 0.02;
 		//Horizon time for model predictive control
 		uint32_t horizonTime = 20000;
         

@@ -57,7 +57,7 @@ void updateMotors() {
   for (uint8_t i = 0; i < 3; i++) {
     motors[i].updateEncoders();
     motors[i].setForceTarget(0);
-    motors[i].updatePID();
+    motors[i].updateMPC();
   }
 }
 

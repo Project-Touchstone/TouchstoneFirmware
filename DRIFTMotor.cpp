@@ -96,15 +96,10 @@ void DRIFTMotor::updateMPC() {
 		velocities[i] = encoders[i].sampledVelocity();
 	}
 
-	//Updates motor power / velocity correlation
-	if (lastPower != 0) {
-		velocityCorrelation = lastPower/velocities[0];
-	}
-
 	//PID cannot be updated during calibration
 	if (mode == FORCE || mode == DISPLACEMENT) {
 		//Gets predicted position of spool encoder at the end of the horizon time
-		float predictedPos = getPosition(1) + getVelocity(1)*horizonTime/1000000;
+		float predictedPos = getPosition(1) + getVelocity(1)*horizonTime/1000000.;
 
 		//Separation is distance between spool and servo encoders
 		separation = getPosition(1) - getPosition(0);
@@ -118,7 +113,7 @@ void DRIFTMotor::updateMPC() {
 		}
 
 		//Gets necessary spool velocity to reach separation target
-		float necessaryVel = ((predictedPos-separationTarget)-getPosition(0))/(horizonTime/1000000);
+		float necessaryVel = ((predictedPos-separationTarget)-getPosition(0))/(horizonTime/1000000.);
 		
 		//Sets power based on necessary velocity
 		setPower(necessaryVel*velocityCorrelation);
@@ -128,7 +123,6 @@ void DRIFTMotor::updateMPC() {
 /// @brief Sets servo power
 /// @param power + (unspooling), - (spooling)
 void DRIFTMotor::setPower(float power) {
-	lastPower = power;
   	ServoController::setPower(servoChannel, power*servoDir);
 }
 

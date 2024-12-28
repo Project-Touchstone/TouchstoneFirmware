@@ -7,12 +7,12 @@
 #define CLK 15
 #define RCLK 2
 
-#define servoChannel 1
+#define servoChannel 14
 #define interruptPin 5
 
 #define servoDriverPort 11
 
-const uint16_t encoderPorts[2] = {7, 6};
+const uint16_t encoderPorts[2] = {8, 9};
 
 const float criticalPoints[3] = {5, 5.25, 5.5};
 const float steepness = 3;
@@ -44,9 +44,7 @@ void setup() {
   Serial.println("DRIFT Motor Test");
 
   while (!motor.calibrate()) {
-    if (ServoController::checkPulseFlag()) {
-      motor.updateMPC();
-    }
+    
   }
   ServoController::reset();
   while (!ServoController::checkPulseFlag()) {
@@ -65,10 +63,10 @@ void updateMotor() {
     motor.setDisplacementTarget(criticalPoints[2]);
   }
   motor.updateMPC();
-  Serial.print("Pos: ");
+  /*Serial.print("Pos: ");
   Serial.print(motor.getPosition(1));
   Serial.print("\tVelocity: ");
-  Serial.println(motor.getVelocity(1));
+  Serial.println(motor.getVelocity(1));*/
 }
 
 uint64_t startTime;
