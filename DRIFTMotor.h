@@ -38,6 +38,7 @@ class DRIFTMotor {
         enum Mode {
           PENDING,
           CALIBRATION,
+		  HOMING,
           FORCE,
           DISPLACEMENT,
           MANUAL,
@@ -49,13 +50,13 @@ class DRIFTMotor {
         const float spoolOffset = 4.85;
 		//Minimal separation between spool and servo encoders
         const float minSep = 2.5;
-		//Separation between spool and servo encoders
-        float separation = 0;
 		//Target separation between encoders
         float separationTarget = 0;
 		//Distance target for spool encoder
         float distTarget = 0;
 
+		//Predicted position
+		float predictedPos = 0;
 		//Velocity correlation for model predictive control
 		float velocityCorrelation = 0.02;
 		//Horizon time for model predictive control
@@ -63,6 +64,12 @@ class DRIFTMotor {
         
 		//Calibration timer start
         uint64_t startTime = 0;
+
+		//Home position
+		float homePos = 0;
+
+		float getEncoderPos(uint8_t encoder);
+		float getEncoderVel(uint8_t encoder);
     public:
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
@@ -74,9 +81,12 @@ class DRIFTMotor {
         void setDisplacementTarget(float target);
         Mode getMode();
         void setMode(Mode mode);
-        float getPosition(uint8_t encoder);
-        float getVelocity(uint8_t encoder);
+        float getPosition();
+		float getPredictedPos();
+        float getVelocity();
         float getSeparation();
+		void beginHome();
+		void endHome();
 };
 
 #endif

@@ -87,6 +87,11 @@ void DRIFTMotor::updateEncoders() {
 		BusChain::selectPort(encoderPorts[i]);
 		encoders[i].update();
 	}
+	if (mode == HOMING) {
+		if (getEncoderPos(1) < homePos) {
+			homePos = getEncoderPos(1);
+		}
+	}
 }
 
 /// @brief Updates servo PID controller
@@ -97,12 +102,10 @@ void DRIFTMotor::updateMPC() {
 	}
 
 	//PID cannot be updated during calibration
-	if (mode == FORCE || mode == DISPLACEMENT) {
+	if (mode == HOMING || mode == FORCE || mode == DISPLACEMENT) {
 		//Gets predicted position of spool encoder at the end of the horizon time
-		float predictedPos = getPosition(1) + getVelocity(1)*horizonTime/1000000.;
+		predictedPos = getEncoderPos(1) + getEncoderVel(1)*horizonTime/1000000.;
 
-		//Separation is distance between spool and servo encoders
-		separation = getPosition(1) - getPosition(0);
 		if (mode == DISPLACEMENT) {
 			//Separation target is set to enforce desired displacement
 			separationTarget = predictedPos - (distTarget-spoolOffset);
@@ -113,7 +116,7 @@ void DRIFTMotor::updateMPC() {
 		}
 
 		//Gets necessary spool velocity to reach separation target
-		float necessaryVel = ((predictedPos-separationTarget)-getPosition(0))/(horizonTime/1000000.);
+		float necessaryVel = ((predictedPos-separationTarget)-getEncoderPos(0))/(horizonTime/1000000.);
 		
 		//Sets power based on necessary velocity
 		setPower(necessaryVel*velocityCorrelation);
@@ -142,7 +145,7 @@ void DRIFTMotor::setForceTarget(float force) {
 /// @param target displacement limit
 void DRIFTMotor::setDisplacementTarget(float target) {
   mode = DISPLACEMENT;
-  distTarget = target;
+  distTarget = target+homePos;
 }
 
 /// @brief Gets current mode
@@ -158,20 +161,48 @@ void DRIFTMotor::setMode(Mode mode) {
 }
 
 /// @brief Gets the position of an encoder
-/// @param encoder 0 (servo encoder), 1 (spool encoder)
-/// @return position
-float DRIFTMotor::getPosition(uint8_t encoder) {
-  return encoders[encoder].relativePosition();
+/// @param encoder 0 (servo), 1 (spool)
+/// @return encoder position
+float DRIFTMotor::getEncoderPos(uint8_t encoder) {
+	return encoders[encoder].relativePosition();
 }
+/// @brief Gets the position of the motor after homing
+/// @return position
+float DRIFTMotor::getPosition() {
+  return encoders[1].relativePosition() - homePos;
+}
+
+/// @brief Gets next predicted position of spool
+/// @return position
+float DRIFTMotor::getPredictedPos() {
+	return predictedPos-homePos;
+}
+
 /// @brief Gets the velocity of an encoder
 /// @param encoder 0 (servo encoder), 1 (spool encoder)
 /// @return velocity in units per second
-float DRIFTMotor::getVelocity(uint8_t encoder) {
+float DRIFTMotor::getEncoderVel(uint8_t encoder) {
   return velocities[encoder];
+}
+/// @brief Gets the velocity of the motor spool
+/// @return velocity
+float DRIFTMotor::getVelocity() {
+	return getEncoderVel(1);
 }
 
 /// @brief Gets separation between spool and servo encoders
 /// @return separation
 float DRIFTMotor::getSeparation() {
-  return separation;
+  return getEncoderPos(1) - getEncoderPos(0);
+}
+
+/// @brief Begins homing mode
+void DRIFTMotor::beginHome() {
+	setForceTarget(0);
+	mode = HOMING;
+}
+
+/// @brief Ends homing mode
+void DRIFTMotor::endHome() {
+	mode = FORCE;
 }

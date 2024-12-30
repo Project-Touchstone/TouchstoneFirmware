@@ -47,10 +47,6 @@ void setup() {
     }
   }
   ServoController::reset();
-  while (!ServoController::checkPulseFlag()) {
-    
-  }
-  updateMotors();
 }
 
 void updateMotors() {
