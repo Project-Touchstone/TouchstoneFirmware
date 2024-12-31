@@ -104,7 +104,7 @@ void DRIFTMotor::updateMPC() {
 	//PID cannot be updated during calibration
 	if (mode == HOMING || mode == FORCE || mode == DISPLACEMENT) {
 		//Gets predicted position of spool encoder at the end of the horizon time
-		predictedPos = getEncoderPos(1) + getEncoderVel(1)*horizonTime/1000000.;
+		float predictedPos = getPredEncoderPos(1);
 
 		if (mode == DISPLACEMENT) {
 			//Separation target is set to enforce desired displacement
@@ -169,13 +169,17 @@ float DRIFTMotor::getEncoderPos(uint8_t encoder) {
 /// @brief Gets the position of the motor after homing
 /// @return position
 float DRIFTMotor::getPosition() {
-  return encoders[1].relativePosition() - homePos;
+  return getEncoderPos(1) - homePos;
 }
 
-/// @brief Gets next predicted position of spool
+/// @brief Gets next predicted position of spool after horizon time
 /// @return position
+float DRIFTMotor::getPredEncoderPos(uint8_t encoder) {
+	return getEncoderPos(encoder) + getEncoderVel(encoder)*horizonTime/1000000.;
+}
+
 float DRIFTMotor::getPredictedPos() {
-	return predictedPos-homePos;
+	return getPredEncoderPos(1) - homePos;
 }
 
 /// @brief Gets the velocity of an encoder

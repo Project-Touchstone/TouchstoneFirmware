@@ -21,7 +21,7 @@ class DRIFTMotor {
 		//BusChain ports for encoders
         uint8_t encoderPorts[2];
 		//Units per radian
-        const float unitsPerRadian = 1/PI;
+        const float unitsPerRadian = 26/12;
 		//Servo direction
         const int8_t servoDir = -1;
 		//Encoder directions
@@ -47,9 +47,9 @@ class DRIFTMotor {
 		//Default mode is pending
         Mode mode = PENDING;
 		//Distance between spool clutch and servo clutch
-        const float spoolOffset = 4.85;
+        const float spoolOffset = 31.7;
 		//Minimal separation between spool and servo encoders
-        const float minSep = 2.5;
+        const float minSep = 16.4;
 		//Target separation between encoders
         float separationTarget = 0;
 		//Distance target for spool encoder
@@ -58,7 +58,7 @@ class DRIFTMotor {
 		//Predicted position
 		float predictedPos = 0;
 		//Velocity correlation for model predictive control
-		float velocityCorrelation = 0.02;
+		float velocityCorrelation = 0.003;
 		//Horizon time for model predictive control
 		uint32_t horizonTime = 20000;
         
@@ -70,6 +70,7 @@ class DRIFTMotor {
 
 		float getEncoderPos(uint8_t encoder);
 		float getEncoderVel(uint8_t encoder);
+		float getPredEncoderPos(uint8_t encoder);
     public:
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
