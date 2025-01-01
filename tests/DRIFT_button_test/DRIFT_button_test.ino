@@ -14,7 +14,7 @@
 
 const uint16_t encoderPorts[2] = {8, 9};
 
-const float criticalPoints[3] = {5, 5.25, 5.5};
+const float criticalPoints[3] = {32.72, 34.36, 36};
 const float steepness = 3;
 
 uint64_t startTime;
