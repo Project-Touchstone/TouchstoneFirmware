@@ -81,6 +81,7 @@ class DRIFTMotor {
         void setDisplacementTarget(float target);
         Mode getMode();
         void setMode(Mode mode);
+		uint8_t getChannel();
         float getPosition();
 		float getPredictedPos();
         float getVelocity();

@@ -32,7 +32,6 @@ class ServoController {
         static volatile uint64_t startTime;
         static uint16_t commsDelay;
 
-        static void IRAM_ATTR onPWMStart();
         static portMUX_TYPE interruptMux;
 
     public:
@@ -41,6 +40,8 @@ class ServoController {
         static void setPWM(uint8_t channel, uint16_t pulseLength);
         static void setPower(uint8_t channel, float power);
         static bool checkPulseFlag();
+        static void updatePWMCycle();
+        static void updatePWM(uint8_t channel);
 };
 
 #endif

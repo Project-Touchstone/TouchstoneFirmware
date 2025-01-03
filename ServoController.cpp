@@ -91,23 +91,21 @@ bool ServoController::checkPulseFlag() {
 void ServoController::updatePWMCycle() {
   portENTER_CRITICAL_ISR(&interruptMux);
   startTime = micros();
-  portEXIT_CRITICAL_ISR(&interruptMux);
-}
-
-void ServoController::updatePWM() {
   pulseFlag = true;
   pulseCount += 1;
   if (pulseCount == deadbandRes) {
     pulseCount = 0;
   }
-  for (uint8_t i = 0; i < MAX_SERVOS; i++) {
-    if (pwmStart > -1) {
-      BusChain::selectPort(driverPort);
-      if (pulseLength > 0) {
-        pwmDriver.setPWM(i + 1, pwmStart[i], pwmEnd[i]);
-      } else {
-        pwmDriver.setPWM(i + 1, 4096, 0);
-      }
+  portEXIT_CRITICAL_ISR(&interruptMux);
+}
+
+void ServoController::updatePWM(uint8_t channel) {
+  if (pwmStart[channel] > -1) {
+    BusChain::selectPort(driverPort);
+    if (pwmEnd[channel] > pwmStart[channel]) {
+      pwmDriver.setPWM(channel + 1, pwmStart[channel], pwmEnd[channel]);
+    } else {
+      pwmDriver.setPWM(channel + 1, 4096, 0);
     }
   }
 }
