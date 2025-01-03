@@ -26,6 +26,7 @@ class ServoController {
         static const uint16_t deadbandRes;
         
         static int16_t pwmStart[MAX_SERVOS];
+        static int16_t pwmEnd[MAX_SERVOS];
         static volatile uint8_t pulseCount;
         static volatile bool pulseFlag;
         static volatile uint64_t startTime;

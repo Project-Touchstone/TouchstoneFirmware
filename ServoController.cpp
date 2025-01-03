@@ -16,6 +16,7 @@ const uint16_t ServoController::deadband = 1;
 const uint16_t ServoController::deadbandRes = 20;
 
 int16_t ServoController::pwmStart[MAX_SERVOS];
+int16_t ServoController::pwmEnd[MAX_SERVOS];
 volatile uint8_t ServoController::pulseCount = 0;
 volatile bool ServoController::pulseFlag = false;
 volatile uint64_t ServoController::startTime;
@@ -23,33 +24,16 @@ uint16_t ServoController::commsDelay = 100;
 
 portMUX_TYPE ServoController::interruptMux = portMUX_INITIALIZER_UNLOCKED;
 
-void IRAM_ATTR ServoController::onPWMStart() {
-  portENTER_CRITICAL_ISR(&interruptMux);
-  startTime = micros();
-  pulseFlag = true;
-  pulseCount += 1;
-  if (pulseCount == deadbandRes) {
-    pulseCount = 0;
-  }
-  portEXIT_CRITICAL_ISR(&interruptMux);
-}
-
 bool ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
   ServoController::driverPort = driverPort;
 
   reset();
-
-  attachInterrupt(interruptPin, &onPWMStart, RISING);
 
   BusChain::selectPort(driverPort);
   bool ret = pwmDriver.begin();
   pwmDriver.setOscillatorFrequency(oscillatorFreq);
   pwmDriver.setPWMFreq(pwmFreq);
   pwmDriver.setPWM(0, 0, 100);
-
-  while (!checkPulseFlag()) {
-    ;
-  }
 
   return ret;
 }
@@ -70,14 +54,7 @@ void ServoController::setPWM(uint8_t channel, uint16_t pulseLength) {
     start = timeDiff + commsDelay;
     pwmStart[channel] = start;
   }
-  uint16_t end = start + pulseLength;
-  channel = channel + 1;
-  BusChain::selectPort(driverPort);
-  if (pulseLength > 0) {
-    pwmDriver.setPWM(channel, start, end);
-  } else {
-    pwmDriver.setPWM(channel, 4096, 0);
-  }
+  pwmEnd[channel] = start + pulseLength;
 }
 
 void ServoController::setPower(uint8_t channel, float power) {
@@ -109,4 +86,28 @@ bool ServoController::checkPulseFlag() {
     return true;
   }
   return false;
+}
+
+void ServoController::updatePWMCycle() {
+  portENTER_CRITICAL_ISR(&interruptMux);
+  startTime = micros();
+  portEXIT_CRITICAL_ISR(&interruptMux);
+}
+
+void ServoController::updatePWM() {
+  pulseFlag = true;
+  pulseCount += 1;
+  if (pulseCount == deadbandRes) {
+    pulseCount = 0;
+  }
+  for (uint8_t i = 0; i < MAX_SERVOS; i++) {
+    if (pwmStart > -1) {
+      BusChain::selectPort(driverPort);
+      if (pulseLength > 0) {
+        pwmDriver.setPWM(i + 1, pwmStart[i], pwmEnd[i]);
+      } else {
+        pwmDriver.setPWM(i + 1, 4096, 0);
+      }
+    }
+  }
 }

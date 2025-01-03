@@ -45,52 +45,32 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
 	return -1;
 }
 
-/// @brief Runs motor encoder calibration sequence (non-blocking)
-/// @return true (complete), false (not complete)
-bool DRIFTMotor::calibrate() {
-	//If this is the first time the method has been called
-	if (mode == PENDING) {
-		//Starts timer and begins unspooling motor at a slow speed
-		startTime = millis();
-		setPower(calibrationPower);
-		//Sets mode to calibration
-		mode = CALIBRATION;
+/// @brief Reads magnetic sensor data
+void DRIFTMotor::updateSensors() {
+	for (uint8_t i = 0; i < 2; i++) {
+		BusChain::selectPort(encoderPorts[i]);
+		encoders[i].updateData();
 	}
-
-	if (millis() - startTime < calibrationTiming[1]) {
-		//If within calibration time
-		if (millis() - startTime < calibrationTiming[0]) {
-			//If within active calibration time
-			//Updates encoders to calibrate
-			updateEncoders();
-		} else {
-			//Updates encoders, but with the servo powered off
-			updateEncoders();
-			setPower(0);
-		}
-		return false;
-	} else if (mode == CALIBRATION) {
-		//Resets encoders to zero
-		for (uint8_t i = 0; i < 2; i++) {
-			BusChain::selectPort(encoderPorts[i]);
-			encoders[i].reset();
-		}
-		//Ends calibration mode
-		mode = MANUAL;
-	}
-	return true;
 }
 
-/// @brief Updates both motor encoders
+/// @brief Interpolates encoder positions
 void DRIFTMotor::updateEncoders() {
 	for (uint8_t i = 0; i < 2; i++) {
 		BusChain::selectPort(encoderPorts[i]);
-		encoders[i].update();
+		encoders[i].updatePosition();
 	}
 	if (mode == HOMING) {
 		if (getEncoderPos(1) < homePos) {
 			homePos = getEncoderPos(1);
 		}
+	}
+}
+
+/// @brief Resets both motor encoders
+void DRIFTMotor::resetEncoders() {
+	for (uint8_t i = 0; i < 2; i++) {
+		BusChain::selectPort(encoderPorts[i]);
+		encoders[i].reset();
 	}
 }
 
@@ -158,6 +138,9 @@ DRIFTMotor::Mode DRIFTMotor::getMode() {
 /// @param mode mode enum
 void DRIFTMotor::setMode(Mode mode) {
   this->mode = mode;
+  if (mode == HOMING) {
+	setForceTarget(0);
+  }
 }
 
 /// @brief Gets the position of an encoder
@@ -198,15 +181,4 @@ float DRIFTMotor::getVelocity() {
 /// @return separation
 float DRIFTMotor::getSeparation() {
   return getEncoderPos(1) - getEncoderPos(0);
-}
-
-/// @brief Begins homing mode
-void DRIFTMotor::beginHome() {
-	setForceTarget(0);
-	mode = HOMING;
-}
-
-/// @brief Ends homing mode
-void DRIFTMotor::endHome() {
-	mode = FORCE;
 }

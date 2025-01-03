@@ -36,7 +36,6 @@ class DRIFTMotor {
 
 		//Operating mode
         enum Mode {
-          PENDING,
           CALIBRATION,
 		  HOMING,
           FORCE,
@@ -74,9 +73,9 @@ class DRIFTMotor {
     public:
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
-        bool calibrate();
         void updateMPC();
-        void updateEncoders();
+        void updateSensors();
+		void updateEncoders();
         void setPower(float power);
         void setForceTarget(float force);
         void setDisplacementTarget(float target);
@@ -86,8 +85,6 @@ class DRIFTMotor {
 		float getPredictedPos();
         float getVelocity();
         float getSeparation();
-		void beginHome();
-		void endHome();
 };
 
 #endif
