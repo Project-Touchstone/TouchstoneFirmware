@@ -49,6 +49,13 @@ typedef uint8_t num_t;
 QueueHandle_t interpolationQueue;
 QueueHandle_t servoQueue;
 
+void IRAM_ATTR onPWMStart() {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;  
+  ServoController::updatePWMCycle();
+  vTaskNotifyGiveFromISR(pwmSchedulerHandle, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );  
+}
+
 // The setup function runs once when you press reset or power on the board.
 void setup() {
   // Initialize serial communication at 115200 bits per second:
@@ -116,9 +123,9 @@ void loop() {
 /*--------------------------------------------------*/
 void TaskGeneralScheduler(void *pvParameters) {
   for (;;) {
-    vTaskNotifyGive(encoderCalibrationHandle);
+    xTaskNotifyGive(encoderCalibrationHandle);
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    vTaskNotifyGive(positionHomingHandle);
+    xTaskNotifyGive(positionHomingHandle);
 
     //Deletes current task
     vTaskDelete(NULL);
@@ -129,7 +136,7 @@ void TaskPWMScheduler(void *pvParameters) {
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     if (!calibrationFlag) {
-      vTaskNotifyGive(kinematicSolverHandle);
+      xTaskNotifyGive(kinematicSolverHandle);
     } else {
       for (uint8_t i = 0; i < 3; i++) {
         num_t motorNum = i;
@@ -155,7 +162,7 @@ void TaskServoController(void *pvParameters) {
 
   for (;;) {
     num_t motorNum;
-    xQueueRecieve(servoQueue, &motorNum, portMAX_DELAY);
+    xQueueReceive(servoQueue, &motorNum, portMAX_DELAY);
     ServoController::updatePWM(motors[motorNum].getChannel());
   }
 }
@@ -186,7 +193,7 @@ void TaskEncoderCalibration(void *pvParameters) {
     ServoController::reset();
 
     //Gives control back to general scheduler
-    vTaskNotifyGive(generalSchedulerHandle);
+    xTaskNotifyGive(generalSchedulerHandle);
 
     calibrationFlag = false;
     //Deletes current task
@@ -202,12 +209,12 @@ void TaskPositionHoming(void *pvParameters) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     //Sets motors to homing mode and waits
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-      motors[i].setMode(HOMING);
+      motors[i].beginHoming();
     }
     vTaskDelay(homingTime);
     //Turns off homing mode
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-      motors[i].setMode(FORCE);
+      motors[i].endHoming();
     }
     //Deletes current task
     vTaskDelete(NULL);
@@ -222,11 +229,17 @@ void TaskKinematicSolver(void *pvParameters) {
     localize();
 		//Updates model predictive control
 		for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-			motor[i].updateMPC();
+			motors[i].updateMPC();
       num_t motorNum = i;
       xQueueSend(servoQueue, &motorNum, 0);
 		}
   }
+}
+
+String toString(const Eigen::VectorXf &mat){
+    std::stringstream ss;
+    ss << mat;
+    return ss.str().c_str();
 }
 
 void localize() {
@@ -264,14 +277,9 @@ void TaskEncoderInterpolation(void *pvParameters) {
   for (;;) {
     //Recieves current motor from queue, blocks if not available
     num_t motorNum;
-    xQueueRecieve(interpolationQueue, &motorNum, portMAX_DELAY);
+    xQueueReceive(interpolationQueue, &motorNum, portMAX_DELAY);
     motors[motorNum].updateEncoders();
   }
-}
-
-void IRAM_ATTR onPWMStart() {
-  ServoController::updatePWMCycle();
-  vTaskNotifyGiveFromISR(pwmSchedulerHandle);
 }
 
 

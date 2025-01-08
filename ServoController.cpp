@@ -22,7 +22,7 @@ volatile bool ServoController::pulseFlag = false;
 volatile uint64_t ServoController::startTime;
 uint16_t ServoController::commsDelay = 100;
 
-portMUX_TYPE ServoController::interruptMux = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE ServoController::spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 bool ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
   ServoController::driverPort = driverPort;
@@ -39,14 +39,17 @@ bool ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
 }
 
 void ServoController::reset() {
+  taskENTER_CRITICAL(&spinlock);
   for (uint8_t i = 0; i < MAX_SERVOS; i++) {
     pwmStart[i] = -1;
   }
   pulseFlag = false;
+  taskEXIT_CRITICAL(&spinlock);
 }
 
 void ServoController::setPWM(uint8_t channel, uint16_t pulseLength) {
   uint32_t start;
+  taskENTER_CRITICAL(&spinlock);
   if (pwmStart[channel] > -1) {
     start = pwmStart[channel];
   } else {
@@ -55,6 +58,7 @@ void ServoController::setPWM(uint8_t channel, uint16_t pulseLength) {
     pwmStart[channel] = start;
   }
   pwmEnd[channel] = start + pulseLength;
+  taskEXIT_CRITICAL(&spinlock);
 }
 
 void ServoController::setPower(uint8_t channel, float power) {
@@ -81,29 +85,35 @@ void ServoController::setPower(uint8_t channel, float power) {
 }
 
 bool ServoController::checkPulseFlag() {
+  taskENTER_CRITICAL(&spinlock);
   if (pulseFlag) {
     pulseFlag = false;
+    taskEXIT_CRITICAL(&spinlock);
     return true;
   }
   return false;
 }
 
 void ServoController::updatePWMCycle() {
-  portENTER_CRITICAL_ISR(&interruptMux);
+  taskENTER_CRITICAL_ISR(&spinlock);
   startTime = micros();
   pulseFlag = true;
   pulseCount += 1;
   if (pulseCount == deadbandRes) {
     pulseCount = 0;
   }
-  portEXIT_CRITICAL_ISR(&interruptMux);
+  taskEXIT_CRITICAL_ISR(&spinlock);
 }
 
 void ServoController::updatePWM(uint8_t channel) {
-  if (pwmStart[channel] > -1) {
+  taskENTER_CRITICAL(&spinlock);
+  int16_t start = pwmStart[channel];
+  int16_t end = pwmEnd[channel];
+  taskEXIT_CRITICAL(&spinlock);
+  if (start > -1) {
     BusChain::selectPort(driverPort);
-    if (pwmEnd[channel] > pwmStart[channel]) {
-      pwmDriver.setPWM(channel + 1, pwmStart[channel], pwmEnd[channel]);
+    if (end > start) {
+      pwmDriver.setPWM(channel + 1, start, end);
     } else {
       pwmDriver.setPWM(channel + 1, 4096, 0);
     }

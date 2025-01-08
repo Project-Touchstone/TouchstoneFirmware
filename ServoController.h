@@ -32,7 +32,7 @@ class ServoController {
         static volatile uint64_t startTime;
         static uint16_t commsDelay;
 
-        static portMUX_TYPE interruptMux;
+        static portMUX_TYPE spinlock;
 
     public:
         static bool begin(uint8_t driverPort, uint8_t interruptPin);
