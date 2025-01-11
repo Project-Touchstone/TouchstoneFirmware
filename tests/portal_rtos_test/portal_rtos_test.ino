@@ -198,9 +198,9 @@ void localize() {
   Vector3f v1, v2, Xn, Yn, Zn, s;
   float r1, r2, r3, i, d, j, x, y, z, z2;
 
-  r1 = motors[0].getPosition() + capRadius;
-  r2 = motors[1].getPosition() + capRadius;
-  r3 = motors[2].getPosition() + capRadius;
+  r1 = motors[0].getPosition();
+  r2 = motors[1].getPosition();
+  r3 = motors[2].getPosition();
 
   v1 = h2-h1;
   v2 = h3-h1;
@@ -243,9 +243,16 @@ void setup() {
   }
 
   //Initializes DRIFT motor outlet points (x, y, z)
+  Vector3f a1, a2, a3;
   h1 << 87.21284, 36.20728, 0;
+  a1 << -cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
+  h1 += a1;
   h2 << -12.25, -93.63217, 0;
+  a2 << 0, capRadius, 0;
+  h2 += a2;
   h3 << -74.96284, 57.4249, 0;
+  a3 << cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
+  h3 += a3;
   
   //Initializes buschain board
   BusChain::begin(SER, CLK, RCLK, 2);
