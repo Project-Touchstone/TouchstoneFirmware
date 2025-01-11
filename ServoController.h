@@ -25,10 +25,11 @@ class ServoController {
         static const uint16_t deadband;
         static const uint16_t deadbandRes;
         
-        static int16_t pwmStart[MAX_SERVOS];
-        static int16_t pwmEnd[MAX_SERVOS];
+        static int16_t pwmStarts[MAX_SERVOS];
+		static uint16_t pwmEnds[MAX_SERVOS];
+        static uint16_t basePWMs[MAX_SERVOS];
+        static int16_t criticalCounts[MAX_SERVOS];
         static volatile uint8_t pulseCount;
-        static volatile bool pulseFlag;
         static volatile uint64_t startTime;
         static uint16_t commsDelay;
 
@@ -37,11 +38,10 @@ class ServoController {
     public:
         static bool begin(uint8_t driverPort, uint8_t interruptPin);
         static void reset();
-        static void setPWM(uint8_t channel, uint16_t pulseLength);
         static void setPower(uint8_t channel, float power);
-        static bool checkPulseFlag();
-        static void updatePWMCycle();
-        static void updatePWM(uint8_t channel);
+        static void updatePWMTime();
+		static void updatePWMCompute(uint8_t channel);
+        static void updatePWMDriver(uint8_t channel);
 };
 
 #endif

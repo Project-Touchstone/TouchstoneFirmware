@@ -7,6 +7,8 @@
 
 /// @brief Default constructor
 DRIFTMotor::DRIFTMotor() {
+	//Dynamic memory allocation for spinlock
+	spinlock = (portMUX_TYPE*) malloc(sizeof(portMUX_TYPE));
 	// Initialize the spinlock dynamically
 	portMUX_INITIALIZE(spinlock);
 }
@@ -39,6 +41,7 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
 		if (!encoders[i].begin()) {
 			return port;
 		}
+		BusChain::release();
 
 		//Sets parameters
 		encoders[i].setUnitsPerRadian(unitsPerRadian);
@@ -48,30 +51,23 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
 }
 
 /// @brief Reads magnetic sensor data
-void DRIFTMotor::updateSensors() {
-	for (uint8_t i = 0; i < 2; i++) {
-		BusChain::selectPort(encoderPorts[i]);
-		encoders[i].updateData();
-	}
+void DRIFTMotor::updateSensor(uint8_t encoder) {
+	BusChain::selectPort(encoderPorts[encoder]);
+	encoders[encoder].updateData();
+	BusChain::release();
 }
 
-/// @brief Interpolates encoder positions
-void DRIFTMotor::updateEncoders() {
-	for (uint8_t i = 0; i < 2; i++) {
-		BusChain::selectPort(encoderPorts[i]);
-		encoders[i].updatePosition();
-	}
-	if (getMode() == HOMING) {
-		if (getEncoderPos(1) < homePos) {
-			homePos = getEncoderPos(1);
-		}
+/// @brief Interpolates encoder position
+void DRIFTMotor::updateEncoder(uint8_t encoder) {
+	encoders[encoder].updatePosition();
+	if ((encoder == 1) && (getMode() == HOMING) && (getEncoderPos(1) < homePos)) {
+		homePos = getEncoderPos(1);
 	}
 }
 
 /// @brief Resets both motor encoders
 void DRIFTMotor::resetEncoders() {
 	for (uint8_t i = 0; i < 2; i++) {
-		BusChain::selectPort(encoderPorts[i]);
 		encoders[i].reset();
 	}
 }
@@ -160,6 +156,7 @@ void DRIFTMotor::setMode(Mode mode) {
 }
 
 void DRIFTMotor::beginHoming() {
+	setForceTarget(0);
 	setMode(HOMING);
 }
 

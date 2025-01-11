@@ -78,8 +78,8 @@ class DRIFTMotor {
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
         void updateMPC();
-        void updateSensors();
-		void updateEncoders();
+        void updateSensor(uint8_t encoder);
+		void updateEncoder(uint8_t encoder);
         void resetEncoders();
         void setPower(float power);
         void setForceTarget(float force);
