@@ -46,9 +46,9 @@ class DRIFTMotor {
 		//Default mode is pending
         Mode mode = CALIBRATION;
 		//Distance between spool clutch and servo clutch
-        const float spoolOffset = 31.7;
+        const float spoolOffset = 14.63;
 		//Minimal separation between spool and servo encoders
-        const float minSep = 16.4;
+        const float minSep = 7.57;
 		//Target separation between encoders
         float separationTarget = 0;
 		//Distance target for spool encoder
@@ -57,7 +57,7 @@ class DRIFTMotor {
 		//Predicted position
 		float predictedPos = 0;
 		//Velocity correlation for model predictive control
-		const float velocityCorrelation = 0.003;
+		const float velocityCorrelation = 0.0065;
 		//Horizon time for model predictive control
 		const uint32_t horizonTime = 20000;
         

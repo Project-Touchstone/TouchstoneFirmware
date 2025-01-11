@@ -43,8 +43,7 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
 		}
 		BusChain::release();
 
-		//Sets parameters
-		encoders[i].setUnitsPerRadian(unitsPerRadian);
+		//Sets encoder direction
 		encoders[i].setDirection(encoderDirs[i]);
 	}
 	return -1;
@@ -61,7 +60,9 @@ void DRIFTMotor::updateSensor(uint8_t encoder) {
 void DRIFTMotor::updateEncoder(uint8_t encoder) {
 	encoders[encoder].updatePosition();
 	if ((encoder == 1) && (getMode() == HOMING) && (getEncoderPos(1) < homePos)) {
+		taskENTER_CRITICAL(spinlock);
 		homePos = getEncoderPos(1);
+		taskEXIT_CRITICAL(spinlock);
 	}
 }
 
@@ -118,7 +119,7 @@ void DRIFTMotor::setForceTarget(float force) {
   setMode(FORCE);
   taskENTER_CRITICAL(spinlock);
   if (force > 0) {
-    separationTarget = spoolOffset + force;
+    separationTarget = spoolOffset + force/unitsPerRadian;
   } else {
 	//If force is zero, no need to be right on the cusp of the tortional spring
     separationTarget = minSep;
@@ -131,7 +132,7 @@ void DRIFTMotor::setForceTarget(float force) {
 void DRIFTMotor::setDisplacementTarget(float target) {
   setMode(DISPLACEMENT);
   taskENTER_CRITICAL(spinlock);
-  distTarget = target+homePos;
+  distTarget = target/unitsPerRadian+homePos;
   taskEXIT_CRITICAL(spinlock);
 }
 
@@ -150,9 +151,6 @@ void DRIFTMotor::setMode(Mode mode) {
 	taskENTER_CRITICAL(spinlock);
   	this->mode = mode;
 	taskEXIT_CRITICAL(spinlock);
-  	if (getMode() == HOMING) {
-		setForceTarget(0);
-  	}
 }
 
 void DRIFTMotor::beginHoming() {
@@ -180,7 +178,7 @@ float DRIFTMotor::getPosition() {
 	taskENTER_CRITICAL(spinlock);
 	float home = homePos;
 	taskEXIT_CRITICAL(spinlock);
-  return getEncoderPos(1) - home;
+  return (getEncoderPos(1) - home)*unitsPerRadian;
 }
 
 /// @brief Gets next predicted position of spool after horizon time
@@ -190,7 +188,7 @@ float DRIFTMotor::getPredEncoderPos(uint8_t encoder) {
 }
 
 float DRIFTMotor::getPredictedPos() {
-	return getPredEncoderPos(1) - homePos;
+	return (getPredEncoderPos(1) - homePos)*unitsPerRadian;
 }
 
 /// @brief Gets the velocity of an encoder
@@ -205,11 +203,11 @@ float DRIFTMotor::getEncoderVel(uint8_t encoder) {
 /// @brief Gets the velocity of the motor spool
 /// @return velocity
 float DRIFTMotor::getVelocity() {
-	return getEncoderVel(1);
+	return getEncoderVel(1)*unitsPerRadian;
 }
 
 /// @brief Gets separation between spool and servo encoders
 /// @return separation
 float DRIFTMotor::getSeparation() {
-  return getEncoderPos(1) - getEncoderPos(0);
+  return (getEncoderPos(1) - getEncoderPos(0))*unitsPerRadian;
 }

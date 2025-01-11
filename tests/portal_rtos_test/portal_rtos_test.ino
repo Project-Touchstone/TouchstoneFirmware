@@ -44,6 +44,7 @@ TaskHandle_t kinematicSolverHandle;
 TaskHandle_t encoderInterpolationHandle;
 
 volatile bool calibrationFlag = true;
+volatile bool homeFlag = false;
 
 uint64_t startTime;
 
@@ -91,12 +92,10 @@ void TaskSensorRead(void *pvParameters) {
   for (;;) {
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       for (uint8_t j = 0; j < 2; j++) {
-        startTime = micros();
         motors[i].updateSensor(j);
         //Writes current sensor to queue for interpolation
         num_t sensorNum = i*2 + j;
         xQueueSend(interpolationQueue, &sensorNum, 0);
-        Serial.println(micros() - startTime);
       }
     }
   }
@@ -163,6 +162,8 @@ void TaskPositionHoming(void *pvParameters) {
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       motors[i].endHoming();
     }
+
+    homeFlag = true;
     
     //Deletes current task
     vTaskDelete(NULL);
@@ -174,7 +175,9 @@ void TaskKinematicSolver(void *pvParameters) {
     //Waits for scheduler notification
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     //Updates localization
-    //localize();
+    if (homeFlag) {
+      localize();
+    }
     //Updates model predictive control
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       motors[i].updateMPC();
@@ -216,8 +219,8 @@ void localize() {
 
   s = h1 + x*Xn + y*Yn + z*Zn;
 
-  //Serial.println(toString(s));
-  //Serial.println();
+  Serial.println(toString(s));
+  Serial.println();
 }
 
 void TaskEncoderInterpolation(void *pvParameters) {
