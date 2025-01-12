@@ -18,7 +18,7 @@
 const uint16_t encoderPorts[2] = {8, 9};
 
 const float criticalPoints[3] = {32.72, 34.36, 36};
-const float steepness = 3;
+const float steepness = 8;
 
 DRIFTMotor motor;
 
@@ -146,10 +146,10 @@ void TaskPositionHoming(void *pvParameters) {
 }
 
 void updateSim() {
-  if (motor.getPredictedPos() < criticalPoints[0]) {
-    motor.setDisplacementTarget(criticalPoints[0]);
-  } else if (motor.getPredictedPos() < criticalPoints[1]) {
-    motor.setForceTarget((motor.getPredictedPos()-criticalPoints[0])*steepness);
+  if (motor.getPosition() < criticalPoints[0]) {
+      motor.setDisplacementTarget(criticalPoints[0]);
+  } else if (motor.getPosition() < criticalPoints[1]) {
+    motor.setForceTarget((motor.getPosition()-criticalPoints[0])*steepness);
   } else {
     motor.setDisplacementTarget(criticalPoints[2]);
   }
