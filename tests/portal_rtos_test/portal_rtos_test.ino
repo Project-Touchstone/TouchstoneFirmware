@@ -2,6 +2,7 @@
 #include <ServoController.h>
 #include <BusChain.h>
 #include <math.h>
+#include <ArduinoEigenDense.h>
 
 #define I2C_CORE 0
 #define APP_CORE 1
@@ -10,20 +11,27 @@
 #define CLK 15
 #define RCLK 2
 
-#define servoChannel 14
 #define interruptPin 5
-
 #define servoDriverPort 11
 
-const uint16_t encoderPorts[2] = {8, 9};
+#define NUM_MOTORS 3
 
-const float criticalPoints[3] = {32.72, 34.36, 36};
-const float steepness = 8;
+using namespace Eigen;
 
-DRIFTMotor motor;
+const uint8_t servoChannels[3] = {0, 1, 14};
+const uint8_t encoderPorts[3][2] = {{14, 15}, {7, 6}, {8, 9}};
+
+DRIFTMotor motors[3];
+
 
 const TickType_t calibrationTime[2] = {pdMS_TO_TICKS(3000), pdMS_TO_TICKS(500)};
-const TickType_t homingTime = pdMS_TO_TICKS(5000);
+const TickType_t homingTime = pdMS_TO_TICKS(20000);
+
+//Positions of DRIFT motor outlets
+Vector3f h1, h2, h3;
+
+//Finger cap radius
+float capRadius = 18.822;
 
 // Define task handles
 TaskHandle_t generalSchedulerHandle;
@@ -42,6 +50,7 @@ uint64_t startTime;
 
 typedef uint8_t num_t;
 QueueHandle_t interpolationQueue;
+QueueHandle_t servoQueue;
 
 void IRAM_ATTR onPWMStart() {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;  
@@ -70,28 +79,34 @@ void TaskPWMScheduler(void *pvParameters) {
     if (!calibrationFlag) {
       xTaskNotifyGive(kinematicSolverHandle);
     } else {
-        ServoController::updatePWMCompute(servoChannel);
-        xTaskNotifyGive(servoControllerHandle);
+      for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+        ServoController::updatePWMCompute(servoChannels[i]);
+        num_t motorNum = i;
+        xQueueSend(servoQueue, &motorNum, 0);
+      }
     }
   }
 }
 
 void TaskSensorRead(void *pvParameters) {
   for (;;) {
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       for (uint8_t j = 0; j < 2; j++) {
-        motor.updateSensor(j);
+        motors[i].updateSensor(j);
         //Writes current sensor to queue for interpolation
-        num_t sensorNum = j;
+        num_t sensorNum = i*2 + j;
         xQueueSend(interpolationQueue, &sensorNum, 0);
       }
+    }
   }
 }
 
 void TaskServoController(void *pvParameters) {
   (void)pvParameters;
   for (;;) {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    ServoController::updatePWMDriver(servoChannel);
+    num_t motorNum;
+    xQueueReceive(servoQueue, &motorNum, portMAX_DELAY);
+    ServoController::updatePWMDriver(servoChannels[motorNum]);
   }
 }
 
@@ -104,14 +119,20 @@ void TaskEncoderCalibration(void *pvParameters) {
     calibrationFlag = true;
     
     //Sets servo to low power for encoder amplitude and phase calibration
-    motor.setPower(0.05);
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      motors[i].setPower(0.05);
+    }
     vTaskDelay(calibrationTime[0]);
     //Stops servo and delays to allow values to stabilize
-    motor.setPower(0);
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      motors[i].setPower(0);
+    }
     
     vTaskDelay(calibrationTime[1]);
     //Resets all encoders
-    motor.resetEncoders();
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      motors[i].resetEncoders();
+    }
     //Resets PWM timing on servo controller
     ServoController::reset();
 
@@ -133,10 +154,14 @@ void TaskPositionHoming(void *pvParameters) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     
     //Sets motors to homing mode and waits
-    motor.beginHoming();
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      motors[i].beginHoming();
+    }
     vTaskDelay(homingTime);
     //Turns off homing mode
-    motor.endHoming();
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      motors[i].endHoming();
+    }
 
     homeFlag = true;
     
@@ -145,33 +170,57 @@ void TaskPositionHoming(void *pvParameters) {
   }
 }
 
-void updateSim() {
-  if (motor.getPosition() < criticalPoints[0]) {
-      motor.setDisplacementTarget(criticalPoints[0]);
-  } else if (motor.getPosition() < criticalPoints[1]) {
-    motor.setForceTarget((motor.getPosition()-criticalPoints[0])*steepness);
-  } else {
-    motor.setDisplacementTarget(criticalPoints[2]);
-  }
-}
-
 void TaskKinematicSolver(void *pvParameters) {
   for (;;) {
     //Waits for scheduler notification
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    Serial.print("Pos: ");
-    Serial.print(motor.getPosition());
-    Serial.print("\tVelocity: ");
-    Serial.println(motor.getVelocity());
-    //Updates simulation
+    //Updates localization
     if (homeFlag) {
-      updateSim();
+      localize();
     }
     //Updates model predictive control
-    motor.updateMPC();
-    ServoController::updatePWMCompute(servoChannel);
-    xTaskNotifyGive(servoControllerHandle);
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      motors[i].updateMPC();
+      ServoController::updatePWMCompute(servoChannels[i]);
+      num_t motorNum = i;
+      xQueueSend(servoQueue, &motorNum, 0);
+    }
   }
+}
+
+String toString(const Eigen::VectorXf &mat){
+    std::stringstream ss;
+    ss << mat;
+    return ss.str().c_str();
+}
+
+void localize() {
+  Vector3f v1, v2, Xn, Yn, Zn, s;
+  float r1, r2, r3, i, d, j, x, y, z, z2;
+
+  r1 = motors[0].getPosition();
+  r2 = motors[1].getPosition();
+  r3 = motors[2].getPosition();
+
+  v1 = h2-h1;
+  v2 = h3-h1;
+
+  Xn = v1.normalized();
+  Zn = v1.cross(v2).normalized();
+  Yn = Xn.cross(Zn);
+
+  i = Xn.dot(v2);
+  d = Xn.dot(v1);
+  j = Yn.dot(v2);
+
+  x = (pow(r1, 2)-pow(r2, 2)+pow(d, 2))/(2*d);
+  y = (pow(r1, 2)-pow(r3, 2)+pow(i, 2)+pow(j, 2))/(2*j) - i/j*x;
+  z = sqrt(max(0., pow(r1, 2)-pow(x, 2)-pow(y,2)));
+
+  s = h1 + x*Xn + y*Yn + z*Zn;
+
+  Serial.println(toString(s));
+  Serial.println();
 }
 
 void TaskEncoderInterpolation(void *pvParameters) {
@@ -181,33 +230,55 @@ void TaskEncoderInterpolation(void *pvParameters) {
     //Recieves current motor from queue, blocks if not available
     num_t sensorNum;
     xQueueReceive(interpolationQueue, &sensorNum, portMAX_DELAY);
-    motor.updateEncoder(sensorNum);
+    motors[sensorNum/2].updateEncoder(sensorNum % 2);
   }
 }
 
+// The setup function runs once when you press reset or power on the board.
 void setup() {
+  // Initialize serial communication at 115200 bits per second:
   Serial.begin(115200);
   while (!Serial) {
 
   }
+
+  //Initializes DRIFT motor outlet points (x, y, z)
+  Vector3f a1, a2, a3;
+  h1 << 87.21284, 36.20728, 0;
+  a1 << -cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
+  h1 += a1;
+  h2 << -12.25, -93.63217, 0;
+  a2 << 0, capRadius, 0;
+  h2 += a2;
+  h3 << -74.96284, 57.4249, 0;
+  a3 << cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
+  h3 += a3;
   
+  //Initializes buschain board
   BusChain::begin(SER, CLK, RCLK, 2);
+
+  //Initializes servo driver board, flags connection error
   if (!ServoController::begin(servoDriverPort, interruptPin)) {
     Serial.println("Error connecting to servo driver");
     while (true) {
       
     }
   }
-  int16_t err = motor.attach(servoChannel, encoderPorts[0], encoderPorts[1]);
-  if (err > -1) {
-    Serial.print("Error connecting to encoder port ");
-    Serial.println(err);
-    while (true) {
 
+  //Attaches DRIFT motors to servo and encoder ports, flags encoder connection erros
+  for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+    int16_t err = motors[i].attach(servoChannels[i], encoderPorts[i][0], encoderPorts[i][1]);
+    if (err > -1) {
+      Serial.print("Error connecting to encoder port ");
+      Serial.println(err);
+      while (true) {
+
+      }
     }
   }
-  
-  interpolationQueue = xQueueCreate(2, sizeof(num_t));
+
+  interpolationQueue = xQueueCreate(NUM_MOTORS*2, sizeof(num_t));
+  servoQueue = xQueueCreate(NUM_MOTORS, sizeof(num_t));
 
   xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 5, &servoControllerHandle, I2C_CORE);
 
@@ -229,5 +300,5 @@ void setup() {
 }
 
 void loop() {
-  
+
 }

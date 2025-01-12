@@ -7,6 +7,10 @@
 
 /// @brief Default constructor
 DRIFTMotor::DRIFTMotor() {
+	//Dynamic memory allocation for spinlock
+	spinlock = (portMUX_TYPE*) malloc(sizeof(portMUX_TYPE));
+	// Initialize the spinlock dynamically
+	portMUX_INITIALIZE(spinlock);
 }
 
 /// @brief Assigns servo and encoders to motor
@@ -37,76 +41,55 @@ int16_t DRIFTMotor::attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t e
 		if (!encoders[i].begin()) {
 			return port;
 		}
+		BusChain::release();
 
-		//Sets parameters
-		encoders[i].setUnitsPerRadian(unitsPerRadian);
+		//Sets encoder direction
 		encoders[i].setDirection(encoderDirs[i]);
 	}
 	return -1;
 }
 
-/// @brief Runs motor encoder calibration sequence (non-blocking)
-/// @return true (complete), false (not complete)
-bool DRIFTMotor::calibrate() {
-	//If this is the first time the method has been called
-	if (mode == PENDING) {
-		//Starts timer and begins unspooling motor at a slow speed
-		startTime = millis();
-		setPower(calibrationPower);
-		//Sets mode to calibration
-		mode = CALIBRATION;
-	}
-
-	if (millis() - startTime < calibrationTiming[1]) {
-		//If within calibration time
-		if (millis() - startTime < calibrationTiming[0]) {
-			//If within active calibration time
-			//Updates encoders to calibrate
-			updateEncoders();
-		} else {
-			//Updates encoders, but with the servo powered off
-			updateEncoders();
-			setPower(0);
-		}
-		return false;
-	} else if (mode == CALIBRATION) {
-		//Resets encoders to zero
-		for (uint8_t i = 0; i < 2; i++) {
-			BusChain::selectPort(encoderPorts[i]);
-			encoders[i].reset();
-		}
-		//Ends calibration mode
-		mode = MANUAL;
-	}
-	return true;
+/// @brief Reads magnetic sensor data
+void DRIFTMotor::updateSensor(uint8_t encoder) {
+	BusChain::selectPort(encoderPorts[encoder]);
+	encoders[encoder].updateData();
+	BusChain::release();
 }
 
-/// @brief Updates both motor encoders
-void DRIFTMotor::updateEncoders() {
-	for (uint8_t i = 0; i < 2; i++) {
-		BusChain::selectPort(encoderPorts[i]);
-		encoders[i].update();
+/// @brief Interpolates encoder position
+void DRIFTMotor::updateEncoder(uint8_t encoder) {
+	encoders[encoder].updatePosition();
+	if ((encoder == 1) && (getMode() == HOMING) && (getEncoderPos(1) < homePos)) {
+		taskENTER_CRITICAL(spinlock);
+		homePos = getEncoderPos(1);
+		taskEXIT_CRITICAL(spinlock);
 	}
-	if (mode == HOMING) {
-		if (getEncoderPos(1) < homePos) {
-			homePos = getEncoderPos(1);
-		}
+}
+
+/// @brief Resets both motor encoders
+void DRIFTMotor::resetEncoders() {
+	for (uint8_t i = 0; i < 2; i++) {
+		encoders[i].reset();
 	}
 }
 
 /// @brief Updates servo PID controller
 void DRIFTMotor::updateMPC() {
 	//Updates sampled encoder velocities
+	taskENTER_CRITICAL(spinlock);
 	for (uint8_t i = 0; i < 2; i++) {
 		velocities[i] = encoders[i].sampledVelocity();
 	}
+	taskEXIT_CRITICAL(spinlock);
 
 	//PID cannot be updated during calibration
-	if (mode == HOMING || mode == FORCE || mode == DISPLACEMENT) {
+	Mode currMode = getMode();
+	if (currMode == HOMING || currMode == FORCE || currMode == DISPLACEMENT) {
 		//Gets predicted position of spool encoder at the end of the horizon time
 		float predictedPos = getPredEncoderPos(1);
 
-		if (mode == DISPLACEMENT) {
+		taskENTER_CRITICAL(spinlock);
+		if (currMode == DISPLACEMENT) {
 			//Separation target is set to enforce desired displacement
 			separationTarget = predictedPos - (distTarget-spoolOffset);
 		}
@@ -114,6 +97,7 @@ void DRIFTMotor::updateMPC() {
 			//A minimum separation prevents string from becoming slack
 			separationTarget = minSep;
 		}
+		taskEXIT_CRITICAL(spinlock);
 
 		//Gets necessary spool velocity to reach separation target
 		float necessaryVel = ((predictedPos-separationTarget)-getEncoderPos(0))/(horizonTime/1000000.);
@@ -132,32 +116,50 @@ void DRIFTMotor::setPower(float power) {
 /// @brief Sets motor force applied
 /// @param force distance tortional spring is engaged
 void DRIFTMotor::setForceTarget(float force) {
-  mode = FORCE;
+  setMode(FORCE);
+  taskENTER_CRITICAL(spinlock);
   if (force > 0) {
-    separationTarget = spoolOffset + force;
+    separationTarget = spoolOffset + force/unitsPerRadian;
   } else {
 	//If force is zero, no need to be right on the cusp of the tortional spring
     separationTarget = minSep;
   }
+  taskEXIT_CRITICAL(spinlock);
 }
 
 /// @brief Sets spool displacement limit
 /// @param target displacement limit
 void DRIFTMotor::setDisplacementTarget(float target) {
-  mode = DISPLACEMENT;
-  distTarget = target+homePos;
+  setMode(DISPLACEMENT);
+  taskENTER_CRITICAL(spinlock);
+  distTarget = target/unitsPerRadian+homePos;
+  taskEXIT_CRITICAL(spinlock);
 }
 
 /// @brief Gets current mode
 /// @return mode enum
 DRIFTMotor::Mode DRIFTMotor::getMode() {
-  return mode;
+	taskENTER_CRITICAL(spinlock);
+	Mode currMode = mode;
+	taskEXIT_CRITICAL(spinlock);
+  	return currMode;
 }
 
 /// @brief Sets mode
 /// @param mode mode enum
 void DRIFTMotor::setMode(Mode mode) {
-  this->mode = mode;
+	taskENTER_CRITICAL(spinlock);
+  	this->mode = mode;
+	taskEXIT_CRITICAL(spinlock);
+}
+
+void DRIFTMotor::beginHoming() {
+	setForceTarget(0);
+	setMode(HOMING);
+}
+
+void DRIFTMotor::endHoming() {
+	setMode(FORCE);
 }
 
 /// @brief Gets the position of an encoder
@@ -169,7 +171,10 @@ float DRIFTMotor::getEncoderPos(uint8_t encoder) {
 /// @brief Gets the position of the motor after homing
 /// @return position
 float DRIFTMotor::getPosition() {
-  return getEncoderPos(1) - homePos;
+	taskENTER_CRITICAL(spinlock);
+	float home = homePos;
+	taskEXIT_CRITICAL(spinlock);
+  return (getEncoderPos(1) - home)*unitsPerRadian;
 }
 
 /// @brief Gets next predicted position of spool after horizon time
@@ -179,34 +184,26 @@ float DRIFTMotor::getPredEncoderPos(uint8_t encoder) {
 }
 
 float DRIFTMotor::getPredictedPos() {
-	return getPredEncoderPos(1) - homePos;
+	return (getPredEncoderPos(1) - homePos)*unitsPerRadian;
 }
 
 /// @brief Gets the velocity of an encoder
 /// @param encoder 0 (servo encoder), 1 (spool encoder)
 /// @return velocity in units per second
 float DRIFTMotor::getEncoderVel(uint8_t encoder) {
-  return velocities[encoder];
+	taskENTER_CRITICAL(spinlock);
+	float vel = velocities[encoder];
+	taskEXIT_CRITICAL(spinlock);
+  	return velocities[encoder];
 }
 /// @brief Gets the velocity of the motor spool
 /// @return velocity
 float DRIFTMotor::getVelocity() {
-	return getEncoderVel(1);
+	return getEncoderVel(1)*unitsPerRadian;
 }
 
 /// @brief Gets separation between spool and servo encoders
 /// @return separation
 float DRIFTMotor::getSeparation() {
-  return getEncoderPos(1) - getEncoderPos(0);
-}
-
-/// @brief Begins homing mode
-void DRIFTMotor::beginHome() {
-	setForceTarget(0);
-	mode = HOMING;
-}
-
-/// @brief Ends homing mode
-void DRIFTMotor::endHome() {
-	mode = FORCE;
+  return (getEncoderPos(1) - getEncoderPos(0))*unitsPerRadian;
 }

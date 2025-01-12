@@ -34,9 +34,8 @@ class DRIFTMotor {
 		//Sampled velocities of encoders
         float velocities[2];
 
-		//Operating mode
+        //Operating mode
         enum Mode {
-          PENDING,
           CALIBRATION,
 		  HOMING,
           FORCE,
@@ -45,11 +44,11 @@ class DRIFTMotor {
         };
 
 		//Default mode is pending
-        Mode mode = PENDING;
+        Mode mode = CALIBRATION;
 		//Distance between spool clutch and servo clutch
-        const float spoolOffset = 31.7;
+        const float spoolOffset = 15;
 		//Minimal separation between spool and servo encoders
-        const float minSep = 16.4;
+        const float minSep = 7.5;
 		//Target separation between encoders
         float separationTarget = 0;
 		//Distance target for spool encoder
@@ -58,9 +57,9 @@ class DRIFTMotor {
 		//Predicted position
 		float predictedPos = 0;
 		//Velocity correlation for model predictive control
-		float velocityCorrelation = 0.003;
+		const float velocityCorrelation = 0.002;
 		//Horizon time for model predictive control
-		uint32_t horizonTime = 20000;
+		const uint32_t horizonTime = 20000;
         
 		//Calibration timer start
         uint64_t startTime = 0;
@@ -68,26 +67,31 @@ class DRIFTMotor {
 		//Home position
 		float homePos = 0;
 
+        //Spinlock for RTOS
+        portMUX_TYPE* spinlock;
+
 		float getEncoderPos(uint8_t encoder);
 		float getEncoderVel(uint8_t encoder);
 		float getPredEncoderPos(uint8_t encoder);
+        void setMode(Mode mode);
     public:
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
-        bool calibrate();
         void updateMPC();
-        void updateEncoders();
+        void updateSensor(uint8_t encoder);
+		void updateEncoder(uint8_t encoder);
+        void resetEncoders();
         void setPower(float power);
         void setForceTarget(float force);
         void setDisplacementTarget(float target);
         Mode getMode();
-        void setMode(Mode mode);
+        void beginHoming();
+        void endHoming();
         float getPosition();
+        float getLastPosition();
 		float getPredictedPos();
         float getVelocity();
         float getSeparation();
-		void beginHome();
-		void endHome();
 };
 
 #endif

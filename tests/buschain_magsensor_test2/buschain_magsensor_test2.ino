@@ -1,25 +1,23 @@
 #include <Tlv493d.h>
 #include <BusChain.h>
 
-#define SER 3
-#define CLK 4
-#define RCLK 5
+#define SER 4
+#define CLK 15
+#define RCLK 2
 
 #define targetPort 7
 
 // Tlv493d Opject
 Tlv493d magSensor = Tlv493d();
 
-uint32_t clockSpeed = 400000;
-
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
     ;
   }
-  BusChain.begin(SER, CLK, RCLK, 1, clockSpeed);
+  BusChain::begin(SER, CLK, RCLK, 1);
 
-  int err = BusChain.selectPort(targetPort);
+  int err = BusChain::selectPort(targetPort);
   if (err != 0) {
     Serial.print("Error selecting I2C port: ");
     Serial.println(err);
