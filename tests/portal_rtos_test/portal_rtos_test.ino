@@ -80,7 +80,7 @@ void TaskPWMScheduler(void *pvParameters) {
       xTaskNotifyGive(kinematicSolverHandle);
     } else {
       for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-        ServoController::updatePWMCompute(motors[i].getChannel());
+        ServoController::updatePWMCompute(servoChannels[i]);
         num_t motorNum = i;
         xQueueSend(servoQueue, &motorNum, 0);
       }
@@ -106,7 +106,7 @@ void TaskServoController(void *pvParameters) {
   for (;;) {
     num_t motorNum;
     xQueueReceive(servoQueue, &motorNum, portMAX_DELAY);
-    ServoController::updatePWMDriver(motors[motorNum].getChannel());
+    ServoController::updatePWMDriver(servoChannels[motorNum]);
   }
 }
 
@@ -181,7 +181,7 @@ void TaskKinematicSolver(void *pvParameters) {
     //Updates model predictive control
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       motors[i].updateMPC();
-      ServoController::updatePWMCompute(motors[i].getChannel());
+      ServoController::updatePWMCompute(servoChannels[i]);
       num_t motorNum = i;
       xQueueSend(servoQueue, &motorNum, 0);
     }
@@ -277,7 +277,7 @@ void setup() {
     }
   }
 
-  interpolationQueue = xQueueCreate(NUM_MOTORS, sizeof(num_t));
+  interpolationQueue = xQueueCreate(NUM_MOTORS*2, sizeof(num_t));
   servoQueue = xQueueCreate(NUM_MOTORS, sizeof(num_t));
 
   xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 5, &servoControllerHandle, I2C_CORE);

@@ -87,7 +87,6 @@ class DRIFTMotor {
         Mode getMode();
         void beginHoming();
         void endHoming();
-		uint8_t getChannel();
         float getPosition();
 		float getPredictedPos();
         float getVelocity();

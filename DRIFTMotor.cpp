@@ -162,10 +162,6 @@ void DRIFTMotor::endHoming() {
 	setMode(FORCE);
 }
 
-uint8_t DRIFTMotor::getChannel() {
-	return servoChannel;
-}
-
 /// @brief Gets the position of an encoder
 /// @param encoder 0 (servo), 1 (spool)
 /// @return encoder position
