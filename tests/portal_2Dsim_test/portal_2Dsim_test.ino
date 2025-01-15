@@ -1,4 +1,5 @@
 #include <DRIFTMotor.h>
+#include <DRIFTPlex.h>
 #include <ServoController.h>
 #include <BusChain.h>
 #include <math.h>
@@ -21,14 +22,13 @@ using namespace Eigen;
 const uint8_t servoChannels[3] = {0, 1, 14};
 const uint8_t encoderPorts[3][2] = {{13, 15}, {7, 6}, {8, 9}};
 
+DRIFTPlex motorPlex;
 DRIFTMotor motors[3];
-
 
 const TickType_t calibrationTime[2] = {pdMS_TO_TICKS(3000), pdMS_TO_TICKS(500)};
 const TickType_t homingTime = pdMS_TO_TICKS(20000);
 
-//Positions of DRIFT motor outlets
-Vector3f h1, h2, h3;
+Vector3f homePoints[3];
 
 //Finger cap radius
 float capRadius = 18.822;
@@ -180,7 +180,7 @@ void TaskKinematicSolver(void *pvParameters) {
     }
     //Updates model predictive control
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-      motors[i].updateMPC();
+      motors[i].updateMPC(motorPlex.getPredictedPos(i));
       ServoController::updatePWMCompute(servoChannels[i]);
       num_t motorNum = i;
       xQueueSend(servoQueue, &motorNum, 0);
@@ -195,44 +195,21 @@ String toString(const Eigen::VectorXf &mat){
 }
 
 void updateSim() {
-  Vector3f v1, v2, Xn, Yn, Zn, s;
-  float r1, r2, r3, i, d, j, x, y, z, z2;
-
-  r1 = motors[0].getPosition();
-  r2 = motors[1].getPosition();
-  r3 = motors[2].getPosition();
-
-  v1 = h2-h1;
-  v2 = h3-h1;
-
-  Xn = v1.normalized();
-  Zn = v1.cross(v2).normalized();
-  Yn = Xn.cross(Zn);
-
-  i = Xn.dot(v2);
-  d = Xn.dot(v1);
-  j = Yn.dot(v2);
-
-  x = (pow(r1, 2)-pow(r2, 2)+pow(d, 2))/(2*d);
-  y = (pow(r1, 2)-pow(r3, 2)+pow(i, 2)+pow(j, 2))/(2*j) - i/j*x;
-  z = sqrt(max(0., pow(r1, 2)-pow(x, 2)-pow(y,2)));
-
-  s = h1 + x*Xn + y*Yn + z*Zn;
-
-  Serial.println(toString(s));
+  motorPlex.localize();
+  Vector3f loc = motorPlex.getPosition();
+  Serial.println(toString(loc));
   Serial.println();
 
-  if (s(0) >= 0) {
+  if (loc(0) >= 0) {
     //If inside wall
-    //Targets closest point on edge of wall
-    s(0) = 0;
-    //Sets displacement targets for each motor
-    motors[1].setDisplacementTarget((s-h2).norm());
-    motors[2].setDisplacementTarget((s-h3).norm());
+    //Targets closest point on wall
+    loc(0) = 0;
+    //Sets POSITION target
+    motorPlex.setPositionLimit(loc, true);
   } else {
-    motors[1].setForceTarget(0);
-    motors[2].setForceTarget(0);
+    motorPlex.setForceTarget();
   }
+  motorPlex.updateController();
 }
 
 void TaskEncoderInterpolation(void *pvParameters) {
@@ -256,15 +233,18 @@ void setup() {
 
   //Initializes DRIFT motor outlet points (x, y, z)
   Vector3f a1, a2, a3;
-  h1 << 87.21284, 36.20728, 0;
+  homePoints[0] << 87.21284, 36.20728, 0;
   a1 << -cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
-  h1 += a1;
-  h2 << -12.25, -93.63217, 0;
+  homePoints[0] += a1;
+  homePoints[1] << -12.25, -93.63217, 0;
   a2 << 0, capRadius, 0;
-  h2 += a2;
-  h3 << -74.96284, 57.4249, 0;
+  homePoints[1] += a2;
+  homePoints[2] << -74.96284, 57.4249, 0;
   a3 << cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
-  h3 += a3;
+  homePoints[2] += a3;
+
+  //Gives homing points and motors to DRIFTPlex
+  motorPlex.attach(motors, homePoints, 3);
   
   //Initializes buschain board
   BusChain::begin(SER, CLK, RCLK, 2);

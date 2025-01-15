@@ -73,25 +73,38 @@ void DRIFTMotor::resetEncoders() {
 	}
 }
 
-/// @brief Updates servo PID controller
-void DRIFTMotor::updateMPC() {
+void DRIFTMotor::sampleVelocity() {
 	//Updates sampled encoder velocities
 	taskENTER_CRITICAL(spinlock);
 	for (uint8_t i = 0; i < 2; i++) {
 		velocities[i] = encoders[i].sampledVelocity();
 	}
 	taskEXIT_CRITICAL(spinlock);
+}
 
+/// @brief Updates servo model predictive control
+void DRIFTMotor::updateMPC() {
+	//Samples velocity and predicts position of spool
+	sampleVelocity();
+	updateMPCLocal(getPredEncoderPos(1));
+}
+
+/// @brief Updates servo model predictive control
+/// @param predictedPos predicted spool position in external units
+void DRIFTMotor::updateMPC(float predictedPos) {
+	updateMPCLocal((predictedPos/unitsPerRadian) + homePos);
+}
+
+/// @brief Updates servo model predictive control
+/// @param predictedPos predicted spool position
+void DRIFTMotor::updateMPCLocal(float predictedPos) {
 	//PID cannot be updated during calibration
 	Mode currMode = getMode();
-	if (currMode == HOMING || currMode == FORCE || currMode == DISPLACEMENT) {
-		//Gets predicted position of spool encoder at the end of the horizon time
-		float predictedPos = getPredEncoderPos(1);
-
+	if (currMode == HOMING || currMode == FORCE || currMode == POSITION) {
 		taskENTER_CRITICAL(spinlock);
-		if (currMode == DISPLACEMENT) {
-			//Separation target is set to enforce desired displacement
-			separationTarget = predictedPos - (distTarget-spoolOffset);
+		if (currMode == POSITION) {
+			//Separation target is set to enforce desired POSITION
+			separationTarget = predictedPos - (posLimit-spoolOffset);
 		}
 		if (separationTarget < minSep) {
 			//A minimum separation prevents string from becoming slack
@@ -99,8 +112,8 @@ void DRIFTMotor::updateMPC() {
 		}
 		taskEXIT_CRITICAL(spinlock);
 
-		//Gets necessary spool velocity to reach separation target
-		float necessaryVel = ((predictedPos-separationTarget)-getEncoderPos(0))/(horizonTime/1000000.);
+		//Gets necessary spool velocity to reach separation target from predicted servo position
+		float necessaryVel = ((predictedPos-separationTarget)-getPredEncoderPos(0))/(horizonTime/1000000.);
 		
 		//Sets power based on necessary velocity
 		setPower(necessaryVel*velocityCorrelation);
@@ -127,12 +140,12 @@ void DRIFTMotor::setForceTarget(float force) {
   taskEXIT_CRITICAL(spinlock);
 }
 
-/// @brief Sets spool displacement limit
-/// @param target displacement limit
-void DRIFTMotor::setDisplacementTarget(float target) {
-  setMode(DISPLACEMENT);
+/// @brief Sets spool POSITION limit
+/// @param target POSITION limit
+void DRIFTMotor::setPositionLimit(float target) {
+  setMode(POSITION);
   taskENTER_CRITICAL(spinlock);
-  distTarget = target/unitsPerRadian+homePos;
+  posLimit = target/unitsPerRadian+homePos;
   taskEXIT_CRITICAL(spinlock);
 }
 
@@ -206,4 +219,8 @@ float DRIFTMotor::getVelocity() {
 /// @return separation
 float DRIFTMotor::getSeparation() {
   return (getEncoderPos(1) - getEncoderPos(0))*unitsPerRadian;
+}
+
+uint32_t DRIFTMotor::getHorizonTime() {
+	return horizonTime;
 }

@@ -147,11 +147,11 @@ void TaskPositionHoming(void *pvParameters) {
 
 void updateSim() {
   if (motor.getPosition() < criticalPoints[0]) {
-      motor.setDisplacementTarget(criticalPoints[0]);
+      motor.setPositionLimit(criticalPoints[0]);
   } else if (motor.getPosition() < criticalPoints[1]) {
     motor.setForceTarget((motor.getPosition()-criticalPoints[0])*steepness);
   } else {
-    motor.setDisplacementTarget(criticalPoints[2]);
+    motor.setPositionLimit(criticalPoints[2]);
   }
 }
 

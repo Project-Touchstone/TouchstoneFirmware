@@ -39,7 +39,7 @@ class DRIFTMotor {
           CALIBRATION,
 		  HOMING,
           FORCE,
-          DISPLACEMENT,
+          POSITION,
           MANUAL,
         };
 
@@ -52,14 +52,12 @@ class DRIFTMotor {
 		//Target separation between encoders
         float separationTarget = 0;
 		//Distance target for spool encoder
-        float distTarget = 0;
+        float posLimit = 0;
 
-		//Predicted position
-		float predictedPos = 0;
 		//Velocity correlation for model predictive control
 		const float velocityCorrelation = 0.002;
 		//Horizon time for model predictive control
-		const uint32_t horizonTime = 20000;
+		static const uint32_t horizonTime = 20000;
         
 		//Calibration timer start
         uint64_t startTime = 0;
@@ -74,16 +72,19 @@ class DRIFTMotor {
 		float getEncoderVel(uint8_t encoder);
 		float getPredEncoderPos(uint8_t encoder);
         void setMode(Mode mode);
+        void updateMPCLocal(float predictedPos);
     public:
         DRIFTMotor();
         int16_t attach(uint8_t servoChannel, uint8_t encoderPort0, uint8_t encoderPort1);
+        void sampleVelocity();
         void updateMPC();
+        void updateMPC(float predictedPos);
         void updateSensor(uint8_t encoder);
 		void updateEncoder(uint8_t encoder);
         void resetEncoders();
         void setPower(float power);
         void setForceTarget(float force);
-        void setDisplacementTarget(float target);
+        void setPositionLimit(float target);
         Mode getMode();
         void beginHoming();
         void endHoming();
@@ -92,6 +93,7 @@ class DRIFTMotor {
 		float getPredictedPos();
         float getVelocity();
         float getSeparation();
+        static uint32_t getHorizonTime();
 };
 
 #endif
