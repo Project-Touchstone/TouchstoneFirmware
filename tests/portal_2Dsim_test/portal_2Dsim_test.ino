@@ -33,6 +33,10 @@ Vector3f homePoints[3];
 //Finger cap radius
 float capRadius = 18.822;
 
+//Wall plane
+Vector3f planePoint;
+Vector3f planeNormal;
+
 // Define task handles
 TaskHandle_t generalSchedulerHandle;
 TaskHandle_t pwmSchedulerHandle;
@@ -200,14 +204,19 @@ void updateSim() {
   Serial.println(toString(loc));
   Serial.println();
 
-  if (loc(0) >= 0) {
+  distToPlane = (loc - planePoint).dot(planeNormal);
+  n = distToPlane*planeNormal;
+  if (distToPlane <= 0) {
     //If inside wall
     //Targets closest point on wall
-    loc(0) = 0;
+    Vector3f closestPoint = loc - distToPlane*planeNormal;
     //Sets POSITION target
-    motorPlex.setPositionLimit(loc, true);
+    motorPlex.setPositionLimit(closestPoint, true);
   } else {
-    motorPlex.setForceTarget();
+    //If outside wall
+    vhat = motorPlex.getVelocity().normalized();
+    slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
+    motorPlex.setPositionLimit(loc + slant, false);
   }
   motorPlex.updateController();
 }
@@ -245,6 +254,10 @@ void setup() {
 
   //Gives homing points and motors to DRIFTPlex
   motorPlex.attach(motors, homePoints, 3);
+
+  //Initializes wall plane
+  planePoint << 0, 0, 0;
+  planeNormal << -1, 0, 0;
   
   //Initializes buschain board
   BusChain::begin(SER, CLK, RCLK, 2);
