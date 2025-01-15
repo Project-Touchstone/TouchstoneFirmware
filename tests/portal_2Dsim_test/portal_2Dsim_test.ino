@@ -204,18 +204,18 @@ void updateSim() {
   Serial.println(toString(loc));
   Serial.println();
 
-  distToPlane = (loc - planePoint).dot(planeNormal);
-  n = distToPlane*planeNormal;
+  float distToPlane = (loc - planePoint).dot(planeNormal);
+  Vector3f n = distToPlane*planeNormal;
   if (distToPlane <= 0) {
     //If inside wall
     //Targets closest point on wall
-    Vector3f closestPoint = loc - distToPlane*planeNormal;
+    Vector3f closestPoint = loc - n;
     //Sets POSITION target
     motorPlex.setPositionLimit(closestPoint, true);
   } else {
     //If outside wall
-    vhat = motorPlex.getVelocity().normalized();
-    slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
+    Vector3f vhat = motorPlex.getVelocity().normalized();
+    Vector3f slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
     motorPlex.setPositionLimit(loc + slant, false);
   }
   motorPlex.updateController();
