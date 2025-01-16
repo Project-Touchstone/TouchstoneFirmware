@@ -113,7 +113,7 @@ void DRIFTMotor::updateMPCLocal(float predictedPos) {
 		taskEXIT_CRITICAL(spinlock);
 
 		//Gets necessary spool velocity to reach separation target from predicted servo position
-		float necessaryVel = ((predictedPos-separationTarget)-getPredEncoderPos(0))/(horizonTime/1000000.);
+		float necessaryVel = ((predictedPos-separationTarget)-getEncoderPos(0))/(horizonTime/1000000.);
 		
 		//Sets power based on necessary velocity
 		setPower(necessaryVel*velocityCorrelation);
