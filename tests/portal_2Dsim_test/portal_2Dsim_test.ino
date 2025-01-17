@@ -28,14 +28,14 @@ DRIFTMotor motors[3];
 const TickType_t calibrationTime[2] = {pdMS_TO_TICKS(3000), pdMS_TO_TICKS(500)};
 const TickType_t homingTime = pdMS_TO_TICKS(20000);
 
-Vector3f homePoints[3];
+Vector2f homePoints[3];
 
 //Finger cap radius
 float capRadius = 18.822;
 
 //Wall plane
-Vector3f planePoint;
-Vector3f planeNormal;
+Vector2f planePoint;
+Vector2f planeNormal;
 
 // Define task handles
 TaskHandle_t generalSchedulerHandle;
@@ -192,7 +192,7 @@ void TaskKinematicSolver(void *pvParameters) {
   }
 }
 
-String toString(const Eigen::VectorXf &mat){
+String toString(const Eigen::VectorXf mat){
     std::stringstream ss;
     ss << mat;
     return ss.str().c_str();
@@ -200,22 +200,22 @@ String toString(const Eigen::VectorXf &mat){
 
 void updateSim() {
   motorPlex.localize();
-  Vector3f loc = motorPlex.getPosition();
-  Serial.println(toString(loc));
-  Serial.println();
+  Vector2f loc = motorPlex.getPosition();
+  //Serial.println(toString(loc));
+  //Serial.println();
 
   float distToPlane = (loc - planePoint).dot(planeNormal);
-  Vector3f n = distToPlane*planeNormal;
+  Vector2f n = distToPlane*planeNormal;
   if (distToPlane <= 0) {
     //If inside wall
     //Targets closest point on wall
-    Vector3f closestPoint = loc - n;
+    Vector2f closestPoint = loc - n;
     //Sets POSITION target
     motorPlex.setPositionLimit(closestPoint, true);
   } else {
     //If outside wall
-    Vector3f vhat = motorPlex.getVelocity().normalized();
-    Vector3f slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
+    Vector2f vhat = motorPlex.getVelocity().normalized();
+    Vector2f slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
     motorPlex.setPositionLimit(loc + slant, false);
   }
   motorPlex.updateController();
@@ -240,24 +240,24 @@ void setup() {
 
   }
 
-  //Initializes DRIFT motor outlet points (x, y, z)
-  Vector3f a1, a2, a3;
-  homePoints[0] << 87.21284, 36.20728, 0;
-  a1 << -cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
+  //Initializes DRIFT motor outlet points (x, y)
+  Vector2f a1, a2, a3;
+  homePoints[0] << 87.21284, 36.20728;
+  a1 << -cos(PI/6)*capRadius, -sin(PI/6)*capRadius;
   homePoints[0] += a1;
-  homePoints[1] << -12.25, -93.63217, 0;
-  a2 << 0, capRadius, 0;
+  homePoints[1] << -12.25, -93.63217;
+  a2 << 0, capRadius;
   homePoints[1] += a2;
-  homePoints[2] << -74.96284, 57.4249, 0;
-  a3 << cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
+  homePoints[2] << -74.96284, 57.4249;
+  a3 << cos(PI/6)*capRadius, -sin(PI/6)*capRadius;
   homePoints[2] += a3;
 
   //Gives homing points and motors to DRIFTPlex
   motorPlex.attach(motors, homePoints, 3);
 
   //Initializes wall plane
-  planePoint << 0, 0, 0;
-  planeNormal << -1, 0, 0;
+  planePoint << 0, 0;
+  planeNormal << -1, 0;
   
   //Initializes buschain board
   BusChain::begin(SER, CLK, RCLK, 2);

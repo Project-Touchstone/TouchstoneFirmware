@@ -21,16 +21,16 @@ class DRIFTPlex {
         //DRIFT motors
         DRIFTMotor* motors;
         //Home points
-        Vector3f* homePoints;
+        Vector2f* homePoints;
         //Number of motors
         uint8_t numMotors;
 
         //3D position
-        Vector3f position;
+        Vector2f position;
         //3D velocity
-        Vector3f velocity;
+        Vector2f velocity;
         //Slant matrix
-        Matrix3f slants;
+        Matrix<float, 3, 2> slants;
 
         //Operating mode
         enum Mode {
@@ -41,24 +41,25 @@ class DRIFTPlex {
 		//Default mode is force
         Mode mode = FORCE;
 		//Target force vector
-        Vector3f forceTarget;
+        Vector2f forceTarget;
 		//Target POSITION
-        Vector3f posLimit;
+        Vector2f posLimit;
         //Collision flag
         bool collision = false;
 
         void setMode(Mode mode);
+        String toString(Eigen::MatrixXf mat);
     public:
-        void attach(DRIFTMotor* motors, Vector3f* homePoints, uint8_t numMotors);
+        void attach(DRIFTMotor* motors, Vector2f* homePoints, uint8_t numMotors);
         void localize();
         void setForceTarget();
-        void setForceTarget(Vector3f force);
-        void setPositionLimit(Vector3f target, bool collision);
+        void setForceTarget(Vector2f force);
+        void setPositionLimit(Vector2f target, bool collision);
         void updateController();
         Mode getMode();
-        Vector3f getPosition();
-        Vector3f getVelocity();
-        Vector3f getPredictedPos();
+        Vector2f getPosition();
+        Vector2f getVelocity();
+        Vector2f getPredictedPos();
         float getPredictedPos(uint8_t motor);
 };
 
