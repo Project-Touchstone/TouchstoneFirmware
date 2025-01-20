@@ -184,7 +184,11 @@ void TaskKinematicSolver(void *pvParameters) {
     }
     //Updates model predictive control
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-      motors[i].updateMPC(motorPlex.getPredictedPos(i));
+      if (homeFlag) {
+        motors[i].updateMPC(motorPlex.getPredictedPos(i));
+      } else {
+        motors[i].updateMPC();
+      }
       ServoController::updatePWMCompute(servoChannels[i]);
       num_t motorNum = i;
       xQueueSend(servoQueue, &motorNum, 0);
@@ -200,7 +204,7 @@ String toString(const Eigen::VectorXf mat){
 
 void updateSim() {
   motorPlex.localize();
-  Vector2f loc = motorPlex.getPosition();
+  /*Vector2f loc = motorPlex.getPosition();
   //Serial.println(toString(loc));
   //Serial.println();
 
@@ -217,7 +221,8 @@ void updateSim() {
     Vector2f vhat = motorPlex.getVelocity().normalized();
     Vector2f slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
     motorPlex.setPositionLimit(loc + slant, false);
-  }
+  }*/
+  motorPlex.setForceTarget();
   motorPlex.updateController();
 }
 

@@ -46,15 +46,18 @@ void DRIFTPlex::localize() {
     
     Vector3f slantVel;
     for (int i = 0; i < numMotors; i++) {
+        motors[i].sampleVelocity();
         slantVel(i) = motors[i].getVelocity();
     }
     
     for (int i = 0; i < numMotors; i++) {
-        slants(i, all) = position - homePoints[i].normalized();
+        slants(i, all) = (position - homePoints[i]).normalized();
     }
     
     JacobiSVD<MatrixXf> svd(slants, ComputeThinU | ComputeThinV);
     velocity = svd.solve(slantVel);
+    Serial.println(toString(slantVel));
+    Serial.println();
 }
 
 void DRIFTPlex::setForceTarget() {
