@@ -204,11 +204,12 @@ String toString(const Eigen::VectorXf mat){
 
 void updateSim() {
   motorPlex.localize();
-  /*Vector2f loc = motorPlex.getPosition();
+  Vector2f loc = motorPlex.getPosition();
   //Serial.println(toString(loc));
   //Serial.println();
 
   float distToPlane = (loc - planePoint).dot(planeNormal);
+  Serial.println(distToPlane);
   Vector2f n = distToPlane*planeNormal;
   if (distToPlane <= 0) {
     //If inside wall
@@ -221,8 +222,7 @@ void updateSim() {
     Vector2f vhat = motorPlex.getVelocity().normalized();
     Vector2f slant = -pow(n.norm(), 2)/vhat.dot(n)*vhat;
     motorPlex.setPositionLimit(loc + slant, false);
-  }*/
-  motorPlex.setForceTarget();
+  }
   motorPlex.updateController();
 }
 

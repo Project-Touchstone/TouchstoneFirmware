@@ -100,20 +100,28 @@ void DRIFTMotor::updateMPC(float predictedPos) {
 void DRIFTMotor::updateMPCLocal(float predictedPos) {
 	//PID cannot be updated during calibration
 	Mode currMode = getMode();
-	if (currMode == HOMING || currMode == FORCE || currMode == POSITION) {
+	if (currMode != CALIBRATION) {
+		float necessaryVel = 0;
 		taskENTER_CRITICAL(spinlock);
 		if (currMode == POSITION) {
-			//Separation target is set to enforce desired POSITION
-			separationTarget = predictedPos - (posLimit-spoolOffset);
-		}
-		if (separationTarget < minSep) {
-			//A minimum separation prevents string from becoming slack
-			separationTarget = minSep;
-		}
-		taskEXIT_CRITICAL(spinlock);
+			if (predictedPos < posLimit) {
+				//Separation target is set to enforce desired POSITION
+				separationTarget = predictedPos - (posLimit-spoolOffset);
 
-		//Gets necessary spool velocity to reach separation target from predicted servo position
-		float necessaryVel = ((predictedPos-separationTarget)-getEncoderPos(0))/(horizonTime/1000000.);
+				if (separationTarget < minSep) {
+					//A minimum separation prevents string from becoming slack
+					separationTarget = minSep;
+				}
+			} else {
+				necessaryVel = (posLimit - predictedPos)/(horizonTime/1000000.);
+			}
+		}
+		if (currMode != POSITION || (currMode == POSITION && predictedPos < posLimit)) {
+			//Gets necessary spool velocity to reach separation target from predicted servo position
+			necessaryVel = ((predictedPos-separationTarget)-getEncoderPos(0))/(horizonTime/1000000.);
+		}
+		
+		taskEXIT_CRITICAL(spinlock);
 		
 		//Sets power based on necessary velocity
 		setPower(necessaryVel*velocityCorrelation);

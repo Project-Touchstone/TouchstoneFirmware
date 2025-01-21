@@ -61,8 +61,6 @@ void DRIFTPlex::localize() {
     JacobiSVD<MatrixXf> svd(slants, ComputeThinU | ComputeThinV);
     
     velocity = svd.solve(slantVel);
-    Serial.println(toString(velocity));
-    Serial.println();
 }
 
 void DRIFTPlex::setForceTarget() {
@@ -76,7 +74,7 @@ void DRIFTPlex::setForceTarget(Vector2f force) {
     this->forceTarget = force;
 }
 
-void DRIFTPlex::setPositionLimit(Vector2f target, bool collision) {
+void DRIFTPlex::setPositionLimit(Vector2f posLimit, bool collision) {
     setMode(POSITION);
     this->posLimit = posLimit;
     this->collision = collision;
@@ -91,10 +89,11 @@ void DRIFTPlex::updateController() {
             break;
         case POSITION:
             for (int i = 0; i < numMotors; i++) {
-                float currPos = motors[i].getPosition();
+                float motorPos = motors[i].getPosition();
+                float currPos = (position - homePoints[i]).norm();
                 float newPos = (posLimit - homePoints[i]).norm();
                 if (collision != (newPos > currPos)) {
-                    motors[i].setPositionLimit(newPos);
+                    motors[i].setPositionLimit(newPos - (currPos - motorPos));
                 } else {
                     motors[i].setForceTarget(0);
                 }
