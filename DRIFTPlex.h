@@ -32,6 +32,11 @@ class DRIFTPlex {
         //Slant matrix
         Matrix<float, 3, 2> slants;
 
+        //Sample start time
+        uint64_t sampleStart;
+        //Whether sampling has started
+        bool started = false;
+
         //Operating mode
         enum Mode {
           FORCE,

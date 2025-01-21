@@ -15,6 +15,9 @@ void DRIFTPlex::attach(DRIFTMotor* motors, Vector2f* homePoints, uint8_t numMoto
     this->motors = motors;
     this->homePoints = homePoints;
     this->numMotors = numMotors;
+
+    position << 0, 0;
+    velocity << 0, 0;
 }
 
 void DRIFTPlex::localize() {
@@ -41,8 +44,13 @@ void DRIFTPlex::localize() {
     x = (pow(r1, 2)-pow(r2, 2)+pow(d, 2))/(2*d);
     y = (pow(r1, 2)-pow(r3, 2)+pow(i, 2)+pow(j, 2))/(2*j) - i/j*x;
     //z = sqrt(max(0., pow(r1, 2)-pow(x, 2)-pow(y,2)));
+
     Vector3f relPos3D = x*Xn + y*Yn; //+ z*Zn;
     position = homePoints[0] + relPos3D(seq(0, 1));
+
+    for (int i = 0; i < numMotors; i++) {
+        slants(i, all) = (position - homePoints[i]).normalized();
+    }
     
     Vector3f slantVel;
     for (int i = 0; i < numMotors; i++) {
@@ -50,13 +58,10 @@ void DRIFTPlex::localize() {
         slantVel(i) = motors[i].getVelocity();
     }
     
-    for (int i = 0; i < numMotors; i++) {
-        slants(i, all) = (position - homePoints[i]).normalized();
-    }
-    
     JacobiSVD<MatrixXf> svd(slants, ComputeThinU | ComputeThinV);
+    
     velocity = svd.solve(slantVel);
-    Serial.println(toString(slantVel));
+    Serial.println(toString(velocity));
     Serial.println();
 }
 
@@ -115,9 +120,9 @@ Vector2f DRIFTPlex::getVelocity() {
 }
 
 Vector2f DRIFTPlex::getPredictedPos() {
-    return getPosition() + getVelocity()*DRIFTMotor::getHorizonTime();
+    return getPosition() + getVelocity()*DRIFTMotor::getHorizonTime()/1000000;
 }
 
 float DRIFTPlex::getPredictedPos(uint8_t motor) {
-    return motors[motor].getPosition() + getVelocity().dot(slants(motor, all))*DRIFTMotor::getHorizonTime();
+    return motors[motor].getPosition() + getVelocity().dot(slants(motor, all))*DRIFTMotor::getHorizonTime()/1000000;
 }
