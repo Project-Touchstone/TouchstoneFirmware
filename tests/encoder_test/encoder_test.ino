@@ -1,4 +1,4 @@
-#include <TrackRing.h>
+#include <TrackNode.h>
 #include <BusChain.h>
 #include <math.h>
 
@@ -14,7 +14,7 @@ const int8_t direction = -1;
 uint64_t startTime;
 
 // Tlv493d Opject
-TrackRing encoder = TrackRing();
+TrackNode encoder = TrackNode();
 
 void setup() {
   Serial.begin(115200);

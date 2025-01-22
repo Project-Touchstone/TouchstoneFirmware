@@ -8,7 +8,7 @@
 
 #include "Arduino.h"
 #include "ServoController.h"
-#include <TrackRing.h>
+#include <TrackNode.h>
 #include <BusChain.h>
 #include <math.h>
 
@@ -17,7 +17,7 @@ class DRIFTMotor {
 		//ServoController channel
         uint8_t servoChannel;
 		//Encoder objects
-        TrackRing encoders[2];
+        TrackNode encoders[2];
 		//BusChain ports for encoders
         uint8_t encoderPorts[2];
 		//Units per radian

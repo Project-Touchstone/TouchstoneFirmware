@@ -9,7 +9,7 @@
 #include "Arduino.h"
 #include "DRIFTMotor.h"
 #include "ServoController.h"
-#include <TrackRing.h>
+#include <TrackNode.h>
 #include <BusChain.h>
 #include <math.h>
 #include <ArduinoEigenDense.h>

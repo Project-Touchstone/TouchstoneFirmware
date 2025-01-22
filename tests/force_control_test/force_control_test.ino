@@ -1,4 +1,4 @@
-#include <TrackRing.h>
+#include <TrackNode.h>
 #include <BusChain.h>
 #include <math.h>
 #include <ModulatedServo.h>
@@ -20,8 +20,8 @@ const float i = 0;
 const float iCap = 0.1;
 const float d = 0;
 
-// TrackRing objects
-TrackRing encoders[2];
+// TrackNode objects
+TrackNode encoders[2];
 
 unsigned long timeStart = 0;
 
