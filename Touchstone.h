@@ -7,7 +7,7 @@
 #define Touchstone_h
 
 #include "Arduino.h"
-#include <TrackNode.h>
+#include <MagEncoder.h>
 #include <BusChain.h>
 
 #endif

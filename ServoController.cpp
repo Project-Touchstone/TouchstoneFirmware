@@ -32,6 +32,8 @@ bool ServoController::begin(uint8_t driverPort, uint8_t interruptPin) {
 
 	BusChain::selectPort(driverPort);
 	bool ret = pwmDriver.begin();
+	Wire.setTimeout(1000);
+	Wire.setClock(1000000);
 	pwmDriver.setOscillatorFrequency(oscillatorFreq);
 	pwmDriver.setPWMFreq(pwmFreq);
 	pwmDriver.setPWM(0, 0, 100);

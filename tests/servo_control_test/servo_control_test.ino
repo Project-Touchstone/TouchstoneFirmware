@@ -20,8 +20,8 @@ const float d = -0.1;
 const float iCap = 0;
 PID pid = PID(p, i, d, iCap);
 
-// TrackNode object
-TrackNode encoder = TrackNode();
+// MagEncoder object
+MagEncoder encoder = MagEncoder();
 
 unsigned long timeStart = 0;
 

@@ -1,4 +1,4 @@
-#include <TrackNode.h>
+#include <MagEncoder.h>
 #include <BusChain.h>
 #include <math.h>
 
@@ -14,7 +14,7 @@ const int8_t direction = -1;
 uint64_t startTime;
 
 // Tlv493d Opject
-TrackNode encoder = TrackNode();
+MagEncoder encoder = MagEncoder();
 
 void setup() {
   Serial.begin(115200);
