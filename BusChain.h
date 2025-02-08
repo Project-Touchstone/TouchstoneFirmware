@@ -9,33 +9,30 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include "freertos/task.h"
+#include <Wire.h>
 
 #define ROOT_ADDRESS 0x70
 
 class BusChain {
     private:
-        static void sendAddressBits(uint8_t data, bool lock);
-
-        //Serial data to shift register
-        static uint8_t ser;
-        //Data clock
-        static uint8_t clk;
-        //Register latching clock
-        static uint8_t rclk;
-
+        // I2C bus
+        TwoWire* i2cPort;
+        // Address identifiers of all modules in chain
+        uint8_t* busIds;
         //Last I2C multiplexer group opened
-        static int8_t lastGroup;
-
-        //Interval (us) between clock signals
-        static uint32_t clockInterval;
+        int8_t lastGroup = -1;
 
         //Mutex for I2C bus access
-        static SemaphoreHandle_t mutex;
+        SemaphoreHandle_t mutex;
         
     public:
-        static void begin(uint8_t ser, uint8_t clk, uint8_t rclk, uint8_t numGroups);
-        static uint8_t selectPort(uint8_t port);
-        static void release();
+        void begin(uint8_t busId);
+        void begin(uint8_t busIds);
+        void begin(uint8_t* busIds);
+        void begin(uint8_t* busIds, TwoWire* i2cPort);
+        uint8_t selectPort(uint8_t port);
+        TwoWire* getI2CPort();
+        void release();
 };
 
 #endif

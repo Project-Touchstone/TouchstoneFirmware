@@ -1,0 +1,263 @@
+#include "ServoController.h"
+#include "BusChain.h"
+#include "MagSensor.h"
+#include "SerialInterface.h"
+#include <math.h>
+#include <Wire.h>
+
+// Cores to pin RTOS tasks to
+#define CORE_0 0
+#define CORE_1 1
+
+// I2C pins
+#define I2C_SDA_0 21
+#define I2C_SCL_0 22
+#define I2C_SDA_1 32
+#define I2C_SCL_1 33
+
+// BusChain address identifiers
+#define BUSCHAIN_0 0
+#define BUSCHAIN_1 1
+
+// PWM output pin on channel 0 of servo driver used for servo synchronization
+#define interruptPin 5
+
+// Servo driver buschain index and core
+#define servoDriverBus 0
+// Servo driver port on BusChain
+#define servoDriverPort 11
+
+// DRIFT motors to configure
+#define NUM_MOTORS 3
+
+namespace SerialHeaders {
+  //Commands from master to controller
+
+	//Pings microcontroller
+	#define PING 0x1
+	//Requests sensor data from microcontroller
+	#define REQUEST_DATA 0x2
+  //Servo power update
+  #define SERVO_POWER 0x3
+
+	//Commands from controller to master
+
+  //Acknowledges ping      
+  #define PING_ACK 0x1
+  //Sends sensor data
+  #define SENSOR_DATA 0x2
+  //Sensor data ready
+  #define DATA_READY 0xA                                                                                                        
+}
+
+using namespace SerialHeaders;
+
+// Servo channels for DRIFT motors
+const uint8_t servoChannels[3] = {0, 1, 14};
+
+// Encoder ports on BusChain (servo, spool) per DRIFT motor
+const uint8_t encoderPorts[3][2] = {{13, 15}, {7, 6}, {8, 9}};
+
+// BusChain objects
+BusChain busChains[2];
+
+// Sensor objects
+MagSensor* magSensors;
+
+// Define task handles
+TaskHandle_t schedulerHandles[2] = {NULL, NULL};
+TaskHandle_t pwmCycleHandle;
+TaskHandle_t sensorReadHandles[2] = {NULL, NULL};
+TaskHandle_t servoControllerHandle;
+TaskHandle_t serialInterfaceHandle;
+
+// Define sensor data queue
+typedef uint8_t num_t;
+QueueHandle_t sensorDataQueue;
+
+uint64_t startTime;
+
+// The setup function runs once when you press reset or power on the board.
+void setup() {
+  // Initialize serial communication at 921600 bits per second:
+  SerialInterface::begin(921600);
+  
+  // Initialize I2C ports
+  Wire.begin(I2C_SDA_0, I2C_SCL_0);
+  Wire1.begin(I2C_SDA_1, I2C_SCL_1);
+
+  // Sets bus parameters
+  Wire.setTimeout(1000);
+	Wire.setClock(1000000);
+  Wire1.setTimeout(1000);
+	Wire1.setClock(1000000);
+
+  //Initializes buschain objects
+  busChains[0].begin(BUSCHAIN_0, &Wire);
+  busChains[1].begin(BUSCHAIN_1, &Wire1);
+
+  //Initializes servo driver board, flags connection error
+  if (!ServoController::begin(servoDriverPort, &busChains[servoDriverBus])) {
+    Serial.println("Error connecting to servo driver");
+    while (true) {
+      
+    }
+  }
+
+  //Initializes encoders
+  MagSensor* sensors = new MagSensor[NUM_MOTORS * 2];
+  for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+    for (uint8_t j = 0; j < 2; j++) {
+      // Connects half the encoders to each busChain
+      if (!sensors[i*2 + j].begin(encoderPorts[i][j], &busChains[j])) {
+        Serial.print("Error connecting to encoder port: ");
+        Serial.println(encoderPorts[i][j]);
+        while (true) {
+
+        }
+      }
+    }
+  }
+  magSensors = sensors;
+
+  sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(num_t));
+
+  xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverBus);
+
+  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, 0, 3, &sensorReadHandle[0], 0);
+  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, 1, 3, &sensorReadHandle[1], 1);
+
+  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 0", 2048, 0, 1, &schedulerHandle[0], 0);
+  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, 1, 1, &schedulerHandle[1], 1);
+  
+  xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 2, &pwmCycleHandle, tskNO_AFFINITY);
+
+  xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, tskNO_AFFINITY);
+
+  attachInterrupt(interruptPin, onPWMStart, RISING);
+}
+
+// Called on rising pwm interrupt pin
+void IRAM_ATTR onPWMStart() {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  //Updates pwm cycle timer for servo synchronization
+  ServoController::updatePWMTime();
+
+  // Notifies pwm cycle task to wake
+  vTaskNotifyGiveFromISR(pwmCycleHandle, &xHigherPriorityTaskWoken);
+
+  // Does context switching if notification wakes higher priority task than current
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );  
+}
+
+/*--------------------------------------------------*/
+/*---------------------- Tasks ---------------------*/
+/*--------------------------------------------------*/
+void TaskScheduler(void *pvParameters) {
+  uint8_t core = *((uint8_t *) pvParameters);
+  for (;;) {
+    if (SerialInterface::available()) {
+      // If serial data needs to be received, yields to serial interface
+      xTaskNotifyGive(serialInterfaceHandle);
+    } else {
+      //Otherwise yields to sensor reading
+      xTaskNotifyGive(sensorReadHandles[core]);
+    }
+  }
+}
+
+void TaskPWMCycle(void *pvParameters) {
+  (void)pvParameters;
+  for (;;) {
+    // Waits for notification from interrupt
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    // Updates PWM ranges based on servo powers
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      ServoController::updatePWMCompute(servoChannels[i]);
+    }
+    // Yields to I2C servo controller
+    xTaskNotifyGive(servoControllerHandle);
+  }
+}
+
+void TaskSensorRead(void *pvParameters) {
+  uint8_t bus = *((uint8_t *) pvParameters);
+  for (;;) {
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      // Waits for notification from scheduler before every I2C transaction
+      ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+      magSensors[i*2 + bus]->update();
+
+      // Adds sensor data to queue
+      num_t sensorNum = i*2 + bus;
+      xQueueSend(sensorDataQueue, &sensorNum, 0);
+      xTaskNotifyGive(serialInterfaceHandle);
+    }
+  }
+}
+
+void TaskServoController(void *pvParameters) {
+  (void)pvParameters;
+  for (;;) {
+    // Waits for notification from PWM cycle
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    // Sends PWM ranges to PWM driver over I2C
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+      ServoController::updatePWMDriver(servoChannels[i]);
+    }
+  }
+}
+
+void TaskSerialInterface(void *pvParameters) {
+  (void)pvParameters;
+  for (;;) {
+    // Waits for notification from scheduler or sensor reading
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    // Reads incoming serial data until end of frame
+    do {
+      SerialInterface::readData();
+      if (SerialInterface::commandReady()) {
+        // If command header does not have a data frame, breaks loop
+        if ((SerialInterface::getCommand() == PING_ACK) || SerialInterface::getCommand() == REQUEST_DATA) {
+          break;
+        }
+      }
+    }
+    while (!SerialInterface::isEnded());
+      
+    if (SerialInterface::commandReady()) {
+      switch (SerialInterface::getCommand()) {
+        case PING:
+          // Sends ping acknowledgement
+          SerialInterface::sendData(PING_ACK);
+          break;
+        case REQUEST_DATA:
+          //Sends sensor data in queue
+          while (xQueueMessagesWaiting(sensorDataQueue) > 0) {
+            num_t sensorNum;
+            xQueueReceive(sensorDataQueue, &sensorNum, 0);
+            // Sends sensor id
+            SerialInterface::sendData(SENSOR_DATA, (uint8_t*)sensorNum, 1);
+            // Sends sensor data
+            SerialInterface::sendData(magSensors[sensorNum].getDataFrame(), MagSensor::DATA_LENGTH);
+          }
+          break;
+        case SERVO_POWER:
+          // Updates servo controller
+          ServoController::processDataFrame(SerialInterface::getDataFrame(), SerialInterface::getDataFrameLength());
+          break;
+      }
+      SerialInterface::clearCommand();
+    } else if (xQueueMessagesWaiting(sensorDataQueue) > 0) {
+      // Sends data ready header
+      SerialInterface::sendData(DATA_READY);
+    }
+  }
+}
+
+void loop() {
+
+}
