@@ -216,44 +216,43 @@ void TaskSerialInterface(void *pvParameters) {
     // Waits for notification from scheduler or sensor reading
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    // Reads incoming serial data until end of frame
-    do {
-      SerialInterface::readData();
-      if (SerialInterface::commandReady()) {
-        // If command header does not have a data frame, breaks loop
-        if ((SerialInterface::getCommand() == PING_ACK) || SerialInterface::getCommand() == REQUEST_DATA) {
-          break;
-        }
-      }
-    }
-    while (!SerialInterface::isEnded());
-      
-    if (SerialInterface::commandReady()) {
+    if (SerialInterface::processCommand()) {
       switch (SerialInterface::getCommand()) {
         case PING:
           // Sends ping acknowledgement
-          SerialInterface::sendData(PING_ACK);
+          SerialInterface::sendByte(PING_ACK);
           break;
         case REQUEST_DATA:
           //Sends sensor data in queue
+          //Sends data header
+          SerialInterface::sendByte(SENSOR_DATA);
           while (xQueueMessagesWaiting(sensorDataQueue) > 0) {
             num_t sensorNum;
             xQueueReceive(sensorDataQueue, &sensorNum, 0);
             // Sends sensor id
-            SerialInterface::sendData(SENSOR_DATA, (uint8_t*)sensorNum, 1);
+            SerialInterface::sendByte((uint8_t) &sensorNum);
             // Sends sensor data
-            SerialInterface::sendData(magSensors[sensorNum].getDataFrame(), MagSensor::DATA_LENGTH);
+            SerialInterface::sendInt32(magSensors.rawX());
+            SerialInterface::sendInt32(magSensors.rawY());
+            SerialInterface::sendInt32(magSensors.rawZ());
+            // Sends end of data frame
+            SerialInterface::sendEnd();
           }
           break;
         case SERVO_POWER:
           // Updates servo controller
-          ServoController::processDataFrame(SerialInterface::getDataFrame(), SerialInterface::getDataFrameLength());
+          if (SerialInterface::available() && !SerialInterface::isEnded()) {
+            uint8_t servoNum = SerialInterface::readByte();
+            float power = SerialInterface::readFloat();
+            ServoController::setPower(servoNum, power);
+          } else if (SerialInterface::isEnded()) {
+            SerialInterface::clearCommand();
+          }
           break;
       }
-      SerialInterface::clearCommand();
     } else if (xQueueMessagesWaiting(sensorDataQueue) > 0) {
       // Sends data ready header
-      SerialInterface::sendData(DATA_READY);
+      SerialInterface::sendByte(DATA_READY);
     }
   }
 }

@@ -4,7 +4,6 @@
 #define END 0x0
 
 SerialInterface::commandFlag = false;
-SerialInterface::dataFrameLength = 0;
 SerialInterface::endFlag = true;
 
 /// @brief Initializes the serial interface
@@ -19,31 +18,27 @@ void SerialInterface::begin(long baudRate) {
 /// @brief Checks if serial data is available
 /// @return true (available), false (not available)
 bool SerialInterface::available() {
-    return Serial.available();
+    return Serial.available() > 0;
 }
 
-/// @brief Reads incoming serial data
-/// @return true (data read), false (no data read)
-bool SerialInterface::readData() {
+/// @brief Checks incoming serial data for a header or end byte
+/// @return true (command to process), false (no command to process)
+bool SerialInterface::processCommand() {
+    // Ensures last data frame and command have been processed
     if (available()) {
         // Reads one byte of data
-        uint8_t buffer[1];
-        Serial.readBytes(buffer, 1);
+        uint8_t byte = Serial.peek();
         
-        if (buffer[0] == END) {
+        if (byte == END) {
             // Sets end flag
             endFlag = true;
+            return false;
         } else if (endFlag) {
             // If end of data frame was already reached, starts new data frame
-            dataFrameLength = 0;
             endFlag = false;
-            command = buffer[0];
+            command = Serial.read();
             // Sets command flag
             commandFlag = true;
-        } else {
-            // Adds data to data frame
-            dataFrame[dataFrameLength] = buffer[0];
-            dataFrameLength++;
         }
 
         return true;
@@ -68,27 +63,34 @@ void SerialInterface::clearCommand() {
     commandFlag = false;
 }
 
-uint8_t* SerialInterface::getDataFrame() {
-    return &dataFrame;
+void SerialInterface::sendByte(uint8_t data) {
+    Serial.write(data);
 }
 
-uint8_t SerialInterface::getDataFrameLength() {
-    return dataFrameLength;
-}
-
-void SerialInterface::sendData(uint8_t header) {
-    sendData(header, new char[0], 0);
-}
-void SerialInterface::sendData(uint8_t header, char* data, uint8_t length) {
-    //Sends header and data
-    Serial.write(header, 1);
-    sendData(data, length);
-}
-void SerialInterface::sendData(char* data, uint8_t length) {
-    if (length > 0) {
-        //Sends data
-        Serial.write(*data, length);
-        //Sends end byte
-        Serial.write(END, 1);
+void SerialInterface::sendData(T data) {
+    uint8_t buffer[sizeof(data)];
+    for (int i = 0; i < sizeof(data); i++) {
+        buffer[i] = (data & 0b11111111);
+        data = data >> 8;
     }
+    Serial.write(buffer, sizeof(data));
+}
+
+void SerialInterface::sendEnd() {
+    Serial.write(END);
+}
+
+uint8_t SerialInterface::readByte() {
+    if (Serial.available() > 0) {
+        return Serial.read();
+    }
+    return 0;
+}
+
+float SerialInterface::readFloat() {
+    float value;
+    if (Serial.available() >= sizeof(value)) {
+        value = Serial.parseFloat();
+    }
+    return value;
 }

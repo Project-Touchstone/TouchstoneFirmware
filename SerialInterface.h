@@ -1,49 +1,50 @@
-#ifndef SerialInterface_h
-#define SerialInterface_h
+#ifndef SERIAL_INTERFACE_H
+#define SERIAL_INTERFACE_H
 
 #include <Arduino.h>
 
 class SerialInterface {
     private:
-        // Data frame
-        static uint8_t dataFrame[255];
-        //Length of data frame
-        static uint8_t dataFrameLength;
-
-        //Whether end of data frame has been reached
-        static bool endFlag;
-
         // Current command
         static uint8_t command;
-
-        // Whether a command is ready to be processed
+        // Whether new command has been received
         static bool commandFlag;
-
+        // Whether current data frame has ended
+        static bool endFlag;
     public:
         // Initializes the serial interface
         static void begin(long baudRate);
 
-        // Checks if serial data is available
-        static bool available();
-        // Handles incoming serial data
-        static bool readData();
-        // Whether a command is ready to be processed
-        static bool commandReady();
-        // Whether transmission has ended
-        static bool isEnded();
-        // Gets current command
-        static uint8_t getCommand();
-        // Clears current commmand
-        static void clearCommand();
-        // Retrieves data frame
-        static uint8_t* getDataFrame();
-        // Retrieves length of data frame
-        static uint8_t getDataFrameLength();
+        // Checks for an incoming header or end byte
+        static bool processCommand();
 
-        // Sends outgoing serial data
-        static void sendData(uint8_t header);
-        static void sendData(uint8_t header, char* data, uint8_t length);
-        static void sendData(char* data, uint8_t length);
+        // Gets the current command
+        static uint8_t getCommand();
+
+        // Sends a byte of data
+        static void sendByte(uint8_t data);
+
+        // Sends a data type in binary form
+        template <typename T>
+        static void sendData(T data);
+
+        // Sends the end of data frame
+        static void sendEnd();
+
+        // Checks if data is available
+        static bool available();
+
+        // Checks if the command has ended
+        static bool isEnded();
+
+        // Reads a byte of data
+        static uint8_t readByte();
+
+        // Reads a 32-bit float
+        static float readFloat32();
+
+        // Clears the current command
+        static void clearCommand();
 };
 
 #endif
