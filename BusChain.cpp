@@ -9,20 +9,9 @@
 /// @param busId address of multiplexing module
 void BusChain::begin(uint8_t busId) {
   uint8_t busIds[1] = {busId};
-  BusChain::begin(busIds);
+  BusChain::begin(&busId, &Wire);
 }
-/// @brief Initializes single BusChain configuration with specified bus
-/// @param busId address of multiplexing module
-/// @param i2cPort specific port to use for I2C communication
-void BusChain::begin(uint8_t busId, TwoWire* i2cPort) {
-  uint8_t busIds[1] = {busId};
-  BusChain::begin(busIds, i2cPort);
-}
-/// @brief Initializes BusChain configuration with default bus
-/// @param busIds addresses of multiplexing modules in chain
-void BusChain::begin(uint8_t* busIds) {
-  BusChain::begin(busIds, &Wire);
-}
+
 /// @brief Initializes BusChain configuration with specified bus
 /// @param busIds addresses of multiplexing modules in chain
 /// @param i2cPort specific port to use for I2C communication

@@ -27,8 +27,6 @@ class BusChain {
         
     public:
         void begin(uint8_t busId);
-        void begin(uint8_t busIds);
-        void begin(uint8_t* busIds);
         void begin(uint8_t* busIds, TwoWire* i2cPort);
         uint8_t selectPort(uint8_t port);
         TwoWire* getI2CPort();

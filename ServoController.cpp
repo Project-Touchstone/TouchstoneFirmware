@@ -5,7 +5,8 @@
 
 #include "ServoController.h"
 
-Adafruit_PWMServoDriver ServoController::pwmDriver = Adafruit_PWMServoDriver();
+Adafruit_PWMServoDriver ServoController::pwmDriver;;
+BusChain* ServoController::busChain;
 uint8_t ServoController::driverPort;
 const uint16_t ServoController::pwmFreq = 50;
 const uint32_t ServoController::oscillatorFreq = 28300000;
@@ -33,14 +34,15 @@ bool ServoController::begin(uint8_t driverPort, BusChain* busChain) {
 	// Initializes communication parameters
 	ServoController::driverPort = driverPort;
 	ServoController::busChain = busChain;
-	ServoController::i2cPort = busChain->getI2CPort();
 
 	// Resets pwm parameters
 	reset();
 
 	// Initializes servo driver
 	busChain->selectPort(driverPort);
-	bool ret = pwmDriver.begin(DEFAULT_ADDRESS, *i2cPort);
+	TwoWire* i2cPort = busChain->getI2CPort();
+	pwmDriver = Adafruit_PWMServoDriver(DEFAULT_ADDRESS, *i2cPort);
+	bool ret = pwmDriver.begin();
 	pwmDriver.setOscillatorFrequency(oscillatorFreq);
 	pwmDriver.setPWMFreq(pwmFreq);
 	// Uses first port to trigger interrupt

@@ -3,8 +3,9 @@
 // Byte signifying end of data frame
 #define END 0x0
 
-SerialInterface::commandFlag = false;
-SerialInterface::endFlag = true;
+uint8_t SerialInterface::command = 0;
+bool SerialInterface::commandFlag = false;
+bool SerialInterface::endFlag = true;
 
 /// @brief Initializes the serial interface
 /// @param baudRate Baud rate of serial communication
@@ -47,10 +48,6 @@ bool SerialInterface::processCommand() {
     }
 }
 
-bool SerialInterface::commandReady() {
-    return commandFlag;
-}
-
 bool SerialInterface::isEnded() {
     return endFlag;
 }
@@ -65,15 +62,6 @@ void SerialInterface::clearCommand() {
 
 void SerialInterface::sendByte(uint8_t data) {
     Serial.write(data);
-}
-
-void SerialInterface::sendData(T data) {
-    uint8_t buffer[sizeof(data)];
-    for (int i = 0; i < sizeof(data); i++) {
-        buffer[i] = (data & 0b11111111);
-        data = data >> 8;
-    }
-    Serial.write(buffer, sizeof(data));
 }
 
 void SerialInterface::sendEnd() {

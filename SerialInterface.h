@@ -41,10 +41,20 @@ class SerialInterface {
         static uint8_t readByte();
 
         // Reads a 32-bit float
-        static float readFloat32();
+        static float readFloat();
 
         // Clears the current command
         static void clearCommand();
 };
+
+template <typename T>
+void SerialInterface::sendData(T data) {
+    uint8_t buffer[sizeof(data)];
+    for (int i = 0; i < sizeof(data); i++) {
+        buffer[i] = (data & 0xFF);
+        data = data >> 8;
+    }
+    Serial.write(buffer, sizeof(data));
+}
 
 #endif

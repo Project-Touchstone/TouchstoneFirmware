@@ -16,8 +16,8 @@
 #define I2C_SCL_1 33
 
 // BusChain address identifiers
-#define BUSCHAIN_0 0
-#define BUSCHAIN_1 1
+uint8_t BUSCHAIN_0 = 0;
+uint8_t BUSCHAIN_1 = 1;
 
 // PWM output pin on channel 0 of servo driver used for servo synchronization
 #define interruptPin 5
@@ -71,6 +71,9 @@ TaskHandle_t sensorReadHandles[2] = {NULL, NULL};
 TaskHandle_t servoControllerHandle;
 TaskHandle_t serialInterfaceHandle;
 
+// Interrupt function prototype
+void IRAM_ATTR onPWMStart();
+
 // Define sensor data queue
 typedef uint8_t num_t;
 QueueHandle_t sensorDataQueue;
@@ -93,8 +96,8 @@ void setup() {
 	Wire1.setClock(1000000);
 
   //Initializes buschain objects
-  busChains[0].begin(BUSCHAIN_0, &Wire);
-  busChains[1].begin(BUSCHAIN_1, &Wire1);
+  busChains[0].begin(&BUSCHAIN_0, &Wire);
+  busChains[1].begin(&BUSCHAIN_1, &Wire1);
 
   //Initializes servo driver board, flags connection error
   if (!ServoController::begin(servoDriverPort, &busChains[servoDriverBus])) {
@@ -124,11 +127,11 @@ void setup() {
 
   xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverBus);
 
-  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, 0, 3, &sensorReadHandle[0], 0);
-  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, 1, 3, &sensorReadHandle[1], 1);
+  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)0, 3, &sensorReadHandles[0], 0);
+  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)1, 3, &sensorReadHandles[1], 1);
 
-  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 0", 2048, 0, 1, &schedulerHandle[0], 0);
-  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, 1, 1, &schedulerHandle[1], 1);
+  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 0", 2048, (void *)0, 1, &schedulerHandles[0], 0);
+  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, (void *)1, 1, &schedulerHandles[1], 1);
   
   xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 2, &pwmCycleHandle, tskNO_AFFINITY);
 
@@ -187,7 +190,7 @@ void TaskSensorRead(void *pvParameters) {
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       // Waits for notification from scheduler before every I2C transaction
       ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-      magSensors[i*2 + bus]->update();
+      magSensors[i*2 + bus].update();
 
       // Adds sensor data to queue
       num_t sensorNum = i*2 + bus;
@@ -226,15 +229,15 @@ void TaskSerialInterface(void *pvParameters) {
           //Sends sensor data in queue
           //Sends data header
           SerialInterface::sendByte(SENSOR_DATA);
-          while (xQueueMessagesWaiting(sensorDataQueue) > 0) {
+          while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
             num_t sensorNum;
             xQueueReceive(sensorDataQueue, &sensorNum, 0);
             // Sends sensor id
-            SerialInterface::sendByte((uint8_t) &sensorNum);
+            SerialInterface::sendByte(sensorNum);
             // Sends sensor data
-            SerialInterface::sendInt32(magSensors.rawX());
-            SerialInterface::sendInt32(magSensors.rawY());
-            SerialInterface::sendInt32(magSensors.rawZ());
+            SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawX());
+            SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawY());
+            SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawZ());
             // Sends end of data frame
             SerialInterface::sendEnd();
           }
@@ -250,7 +253,7 @@ void TaskSerialInterface(void *pvParameters) {
           }
           break;
       }
-    } else if (xQueueMessagesWaiting(sensorDataQueue) > 0) {
+    } else if (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
       // Sends data ready header
       SerialInterface::sendByte(DATA_READY);
     }
