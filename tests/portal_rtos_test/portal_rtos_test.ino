@@ -12,26 +12,26 @@
 #define RCLK 2
 
 #define interruptPin 5
-#define servoDriverPort 11
+#define servoDriverPort 8
 
-#define NUM_MOTORS 3
+#define NUM_MOTORS 4
 
 using namespace Eigen;
 
-const uint8_t servoChannels[3] = {0, 1, 14};
-const uint8_t encoderPorts[3][2] = {{14, 15}, {7, 6}, {8, 9}};
+const uint8_t servoChannels[NUM_MOTORS] = {0, 1, 2, 3};
+const uint8_t encoderPorts[NUM_MOTORS][2] = {{6, 7}, {10, 5}, {11, 3}, {0, 1}};
 
-DRIFTMotor motors[3];
+DRIFTMotor motors[NUM_MOTORS];
 
 
 const TickType_t calibrationTime[2] = {pdMS_TO_TICKS(3000), pdMS_TO_TICKS(500)};
 const TickType_t homingTime = pdMS_TO_TICKS(20000);
 
 //Positions of DRIFT motor outlets
-Vector3f h1, h2, h3;
+//Vector3f h1, h2, h3;
 
 //Finger cap radius
-float capRadius = 18.822;
+//float capRadius = 18.822;
 
 // Define task handles
 TaskHandle_t generalSchedulerHandle;
@@ -176,7 +176,7 @@ void TaskKinematicSolver(void *pvParameters) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     //Updates localization
     if (homeFlag) {
-      localize();
+      //localize();
     }
     //Updates model predictive control
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
@@ -194,7 +194,7 @@ String toString(const Eigen::VectorXf &mat){
     return ss.str().c_str();
 }
 
-void localize() {
+/*void localize() {
   Vector3f v1, v2, Xn, Yn, Zn, s;
   float r1, r2, r3, i, d, j, x, y, z, z2;
 
@@ -221,7 +221,7 @@ void localize() {
 
   Serial.println(toString(s));
   Serial.println();
-}
+}*/
 
 void TaskEncoderInterpolation(void *pvParameters) {
   (void)pvParameters;
@@ -243,7 +243,7 @@ void setup() {
   }
 
   //Initializes DRIFT motor outlet points (x, y, z)
-  Vector3f a1, a2, a3;
+  /*Vector3f a1, a2, a3;
   h1 << 87.21284, 36.20728, 0;
   a1 << -cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
   h1 += a1;
@@ -252,7 +252,7 @@ void setup() {
   h2 += a2;
   h3 << -74.96284, 57.4249, 0;
   a3 << cos(PI/6)*capRadius, -sin(PI/6)*capRadius, 0;
-  h3 += a3;
+  h3 += a3;*/
   
   //Initializes buschain board
   BusChain::begin(SER, CLK, RCLK, 2);
