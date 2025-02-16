@@ -71,8 +71,13 @@ TaskHandle_t sensorReadHandles[2] = {NULL, NULL};
 TaskHandle_t servoControllerHandle;
 TaskHandle_t serialInterfaceHandle;
 
-// Interrupt function prototype
+// Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
+void TaskScheduler(void *pvParameters);
+void TaskPWMCycle(void *pvParameters);
+void TaskSensorRead(void *pvParameters);
+void TaskServoController(void *pvParameters);
+void TaskSerialInterface(void *pvParameters);
 
 // Define sensor data queue
 typedef uint8_t num_t;
@@ -83,7 +88,7 @@ uint64_t startTime;
 // The setup function runs once when you press reset or power on the board.
 void setup() {
   // Initialize serial communication at 921600 bits per second:
-  SerialInterface::begin(921600);
+  SerialInterface::begin(115200);
   
   // Initialize I2C ports
   Wire.begin(I2C_SDA_0, I2C_SCL_0);
@@ -125,6 +130,8 @@ void setup() {
 
   sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(num_t));
 
+  xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, tskNO_AFFINITY);
+  
   xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverBus);
 
   xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)0, 3, &sensorReadHandles[0], 0);
@@ -134,8 +141,6 @@ void setup() {
   xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, (void *)1, 1, &schedulerHandles[1], 1);
   
   xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 2, &pwmCycleHandle, tskNO_AFFINITY);
-
-  xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, tskNO_AFFINITY);
 
   attachInterrupt(interruptPin, onPWMStart, RISING);
 }
@@ -160,13 +165,14 @@ void IRAM_ATTR onPWMStart() {
 void TaskScheduler(void *pvParameters) {
   uint8_t core = *((uint8_t *) pvParameters);
   for (;;) {
-    if (SerialInterface::available()) {
+    if (Serial.available() > 0) {
       // If serial data needs to be received, yields to serial interface
       xTaskNotifyGive(serialInterfaceHandle);
     } else {
       //Otherwise yields to sensor reading
       xTaskNotifyGive(sensorReadHandles[core]);
     }
+    vTaskDelay(1);
   }
 }
 
@@ -224,6 +230,7 @@ void TaskSerialInterface(void *pvParameters) {
         case PING:
           // Sends ping acknowledgement
           SerialInterface::sendByte(PING_ACK);
+          SerialInterface::clearCommand();
           break;
         case REQUEST_DATA:
           //Sends sensor data in queue
@@ -241,10 +248,11 @@ void TaskSerialInterface(void *pvParameters) {
             // Sends end of data frame
             SerialInterface::sendEnd();
           }
+          SerialInterface::clearCommand();
           break;
         case SERVO_POWER:
           // Updates servo controller
-          if (SerialInterface::available() && !SerialInterface::isEnded()) {
+          if (Serial.available() > 5 && !SerialInterface::isEnded()) {
             uint8_t servoNum = SerialInterface::readByte();
             float power = SerialInterface::readFloat();
             ServoController::setPower(servoNum, power);

@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+// Byte signifying end of data frame
+#define END 0x0
+
 class SerialInterface {
     private:
         // Current command
@@ -30,9 +33,6 @@ class SerialInterface {
 
         // Sends the end of data frame
         static void sendEnd();
-
-        // Checks if data is available
-        static bool available();
 
         // Checks if the command has ended
         static bool isEnded();
