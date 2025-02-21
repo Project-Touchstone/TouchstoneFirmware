@@ -31,7 +31,7 @@ uint8_t BUSCHAIN_1 = 1;
 #define NUM_MOTORS 3
 
 namespace SerialHeaders {
-  //Commands from master to controller
+  //Headers from master to controller
 
 	//Pings microcontroller
 	#define PING 0x1
@@ -40,7 +40,7 @@ namespace SerialHeaders {
   //Servo power update
   #define SERVO_POWER 0x3
 
-	//Commands from controller to master
+	//Headers from controller to master
 
   //Acknowledges ping      
   #define PING_ACK 0x1
@@ -225,12 +225,12 @@ void TaskSerialInterface(void *pvParameters) {
     // Waits for notification from scheduler or sensor reading
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    if (SerialInterface::processCommand()) {
-      switch (SerialInterface::getCommand()) {
+    if (SerialInterface::processHeader()) {
+      switch (SerialInterface::getHeader()) {
         case PING:
           // Sends ping acknowledgement
           SerialInterface::sendByte(PING_ACK);
-          SerialInterface::clearCommand();
+          SerialInterface::clearHeader();
           break;
         case REQUEST_DATA:
           //Sends sensor data in queue
@@ -247,7 +247,7 @@ void TaskSerialInterface(void *pvParameters) {
             // Sends end of data frame
             SerialInterface::sendEnd();
           }
-          SerialInterface::clearCommand();
+          SerialInterface::clearHeader();
           break;
         case SERVO_POWER:
           // Updates servo controller
@@ -256,7 +256,7 @@ void TaskSerialInterface(void *pvParameters) {
             float power = SerialInterface::readFloat();
             ServoController::setPower(servoChannels[servoNum], power);
           } else if (SerialInterface::isEnded()) {
-            SerialInterface::clearCommand();
+            SerialInterface::clearHeader();
           }
           break;
       }
