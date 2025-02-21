@@ -242,7 +242,6 @@ void TaskSerialInterface(void *pvParameters) {
             // Sends sensor id
             SerialInterface::sendByte(sensorNum);
             // Sends sensor data
-            SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawX());
             SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawY());
             SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawZ());
             // Sends end of data frame
@@ -255,7 +254,7 @@ void TaskSerialInterface(void *pvParameters) {
           if (Serial.available() > 5 && !SerialInterface::isEnded()) {
             uint8_t servoNum = SerialInterface::readByte();
             float power = SerialInterface::readFloat();
-            ServoController::setPower(servoNum, power);
+            ServoController::setPower(servoChannels[servoNum], power);
           } else if (SerialInterface::isEnded()) {
             SerialInterface::clearCommand();
           }
