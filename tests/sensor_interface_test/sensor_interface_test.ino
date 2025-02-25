@@ -22,13 +22,11 @@ uint8_t BUSCHAIN_1 = 1;
 // PWM output pin on channel 0 of servo driver used for servo synchronization
 #define interruptPin 5
 
-// Servo driver buschain index and core
-#define servoDriverBus 0
-// Servo driver port on BusChain
-#define servoDriverPort 11
+// Servo driver port index
+#define servoDriverPort 3
 
 // DRIFT motors to configure
-#define NUM_MOTORS 3
+#define NUM_MOTORS 4
 
 namespace SerialHeaders {
   //Headers from master to controller
@@ -47,22 +45,30 @@ namespace SerialHeaders {
   //Sends sensor data
   #define SENSOR_DATA 0x2
   //Sensor data ready
-  #define DATA_READY 0xA                                                                                                        
+  #define DATA_READY 0xA
+  //PWM cycle start
+  #define PWM_CYCLE 0xB                                                                                                        
 }
 
 using namespace SerialHeaders;
 
 // Servo channels for DRIFT motors
-const uint8_t servoChannels[3] = {0, 1, 14};
+const uint8_t servoChannels[NUM_MOTORS] = {0, 1, 2, 3};
 
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
-const uint8_t encoderPorts[3][2] = {{13, 15}, {7, 6}, {8, 9}};
+const uint8_t encoderPorts[NUM_MOTORS][2] = {{0, 1}, {7, 6}, {8, 9}, {5, 4}};
 
 // BusChain objects
 BusChain busChains[2];
 
 // Sensor objects
 MagSensor* magSensors;
+
+// List of sensor numbers on each buschain
+uint8_t sensorsByBus[2][8];
+
+// Number of sensors on each bus
+uint8_t sensorCountByBus[2] = {0, 0};
 
 // Define task handles
 TaskHandle_t schedulerHandles[2] = {NULL, NULL};
@@ -80,7 +86,7 @@ void TaskServoController(void *pvParameters);
 void TaskSerialInterface(void *pvParameters);
 
 // Define sensor data queue
-typedef uint8_t num_t;
+typedef uint8_t sensorID_t;
 QueueHandle_t sensorDataQueue;
 
 uint64_t startTime;
@@ -105,34 +111,39 @@ void setup() {
   busChains[1].begin(&BUSCHAIN_1, &Wire1);
 
   //Initializes servo driver board, flags connection error
-  if (!ServoController::begin(servoDriverPort, &busChains[servoDriverBus])) {
+  if (!ServoController::begin(servoDriverPort%8, &busChains[servoDriverPort>>3])) {
     Serial.println("Error connecting to servo driver");
     while (true) {
       
     }
   }
 
-  //Initializes encoders
+  //Initializes encoders in order of id
   MagSensor* sensors = new MagSensor[NUM_MOTORS * 2];
-  for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-    for (uint8_t j = 0; j < 2; j++) {
-      // Connects half the encoders to each busChain
-      if (!sensors[i*2 + j].begin(encoderPorts[i][j], &busChains[j])) {
-        Serial.print("Error connecting to encoder port: ");
-        Serial.println(encoderPorts[i][j]);
-        while (true) {
+  for (uint8_t i = 0; i < NUM_MOTORS*2; i++) {
+    // Finds encoder port for sensor id
+    uint8_t encoderPort = encoderPorts[i/2][i%2];
+    uint8_t bus = encoderPort>>3;
 
-        }
+    // Adds sensor id to list by bus
+    sensorsByBus[bus][sensorCountByBus[bus]++] = i;
+
+    // Attempts to connect through associated port and buschain
+    if (!sensors[i].begin(encoderPort%8, &busChains[bus])) {
+      Serial.print("Error connecting to encoder port: ");
+      Serial.println(encoderPort);
+      while (true) {
+
       }
     }
   }
   magSensors = sensors;
 
-  sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(num_t));
+  sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(sensorID_t));
 
   xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, tskNO_AFFINITY);
   
-  xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverBus);
+  xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverPort>>3);
 
   xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)0, 3, &sensorReadHandles[0], 0);
   xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)1, 3, &sensorReadHandles[1], 1);
@@ -181,27 +192,32 @@ void TaskPWMCycle(void *pvParameters) {
   for (;;) {
     // Waits for notification from interrupt
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    // Sends PWM cycle start header
+    SerialInterface::sendByte(PWM_CYCLE);
+
     // Updates PWM ranges based on servo powers
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
       ServoController::updatePWMCompute(servoChannels[i]);
     }
-    // Yields to I2C servo controller
-    xTaskNotifyGive(servoControllerHandle);
   }
 }
 
 void TaskSensorRead(void *pvParameters) {
   uint8_t bus = *((uint8_t *) pvParameters);
   for (;;) {
-    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+    for (uint8_t i = 0; i < sensorCountByBus[bus]; i++) {
+      //Gets sensor id
+      sensorID_t sensorID = sensorsByBus[bus][i];
       // Waits for notification from scheduler before every I2C transaction
       ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-      magSensors[i*2 + bus].update();
+      magSensors[sensorID].update();
 
       // Adds sensor data to queue
-      num_t sensorNum = i*2 + bus;
-      xQueueSend(sensorDataQueue, &sensorNum, 0);
-      xTaskNotifyGive(serialInterfaceHandle);
+      xQueueSend(sensorDataQueue, &sensorID, 0);
+
+      // Sends data ready header
+      SerialInterface::sendByte(DATA_READY);
     }
   }
 }
@@ -209,7 +225,7 @@ void TaskSensorRead(void *pvParameters) {
 void TaskServoController(void *pvParameters) {
   (void)pvParameters;
   for (;;) {
-    // Waits for notification from PWM cycle
+    // Waits for notification from serial interface that powers have been updated
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     // Sends PWM ranges to PWM driver over I2C
@@ -222,7 +238,7 @@ void TaskServoController(void *pvParameters) {
 void TaskSerialInterface(void *pvParameters) {
   (void)pvParameters;
   for (;;) {
-    // Waits for notification from scheduler or sensor reading
+    // Waits for notification from scheduler that serial data is available
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (SerialInterface::processHeader()) {
@@ -237,13 +253,13 @@ void TaskSerialInterface(void *pvParameters) {
           //Sends data header
           SerialInterface::sendByte(SENSOR_DATA);
           while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
-            num_t sensorNum;
-            xQueueReceive(sensorDataQueue, &sensorNum, 0);
+            sensorID_t sensorID;
+            xQueueReceive(sensorDataQueue, &sensorID, 0);
             // Sends sensor id
-            SerialInterface::sendByte(sensorNum);
+            SerialInterface::sendByte(sensorID);
             // Sends sensor data
-            SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawY());
-            SerialInterface::sendData<int16_t>(magSensors[sensorNum].rawZ());
+            SerialInterface::sendData<int16_t>(magSensors[sensorID].rawY());
+            SerialInterface::sendData<int16_t>(magSensors[sensorID].rawZ());
             // Sends end of data frame
             SerialInterface::sendEnd();
           }
@@ -252,17 +268,18 @@ void TaskSerialInterface(void *pvParameters) {
         case SERVO_POWER:
           // Updates servo controller
           if (Serial.available() > 5 && !SerialInterface::isEnded()) {
+            // Reads servo number and power
             uint8_t servoNum = SerialInterface::readByte();
             float power = SerialInterface::readFloat();
             ServoController::setPower(servoChannels[servoNum], power);
           } else if (SerialInterface::isEnded()) {
+            // Clears header if end of data frame reached
             SerialInterface::clearHeader();
+            // Notifies servo controller to update PWM ranges
+            xTaskNotifyGive(servoControllerHandle);
           }
           break;
       }
-    } else if (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
-      // Sends data ready header
-      SerialInterface::sendByte(DATA_READY);
     }
   }
 }
