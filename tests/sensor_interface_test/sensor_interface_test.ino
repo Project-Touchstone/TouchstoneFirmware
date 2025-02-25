@@ -33,10 +33,8 @@ namespace SerialHeaders {
 
 	//Pings microcontroller
 	#define PING 0x1
-	//Requests sensor data from microcontroller
-	#define REQUEST_DATA 0x2
   //Servo power update
-  #define SERVO_POWER 0x3
+  #define SERVO_POWER 0x2
 
 	//Headers from controller to master
 
@@ -44,10 +42,8 @@ namespace SerialHeaders {
   #define PING_ACK 0x1
   //Sends sensor data
   #define SENSOR_DATA 0x2
-  //Sensor data ready
-  #define DATA_READY 0xA
   //PWM cycle start
-  #define PWM_CYCLE 0xB                                                                                                        
+  #define PWM_CYCLE 0xA                                                                                                        
 }
 
 using namespace SerialHeaders;
@@ -215,9 +211,8 @@ void TaskSensorRead(void *pvParameters) {
 
       // Adds sensor data to queue
       xQueueSend(sensorDataQueue, &sensorID, 0);
-
-      // Sends data ready header
-      SerialInterface::sendByte(DATA_READY);
+      // Notifies serial interface to send sensor data
+      xTaskNotifyGive(serialInterfaceHandle);
     }
   }
 }
@@ -238,7 +233,7 @@ void TaskServoController(void *pvParameters) {
 void TaskSerialInterface(void *pvParameters) {
   (void)pvParameters;
   for (;;) {
-    // Waits for notification from scheduler that serial data is available
+    // Waits for notification from scheduler or sensor read
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (SerialInterface::processHeader()) {
@@ -246,23 +241,6 @@ void TaskSerialInterface(void *pvParameters) {
         case PING:
           // Sends ping acknowledgement
           SerialInterface::sendByte(PING_ACK);
-          SerialInterface::clearHeader();
-          break;
-        case REQUEST_DATA:
-          //Sends sensor data in queue
-          //Sends data header
-          SerialInterface::sendByte(SENSOR_DATA);
-          while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
-            sensorID_t sensorID;
-            xQueueReceive(sensorDataQueue, &sensorID, 0);
-            // Sends sensor id
-            SerialInterface::sendByte(sensorID);
-            // Sends sensor data
-            SerialInterface::sendData<int16_t>(magSensors[sensorID].rawY());
-            SerialInterface::sendData<int16_t>(magSensors[sensorID].rawZ());
-            // Sends end of data frame
-            SerialInterface::sendEnd();
-          }
           SerialInterface::clearHeader();
           break;
         case SERVO_POWER:
@@ -280,6 +258,23 @@ void TaskSerialInterface(void *pvParameters) {
           }
           break;
       }
+    } else if (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
+      // If no header to process, sends sensor data
+      
+      //Sends data header
+      SerialInterface::sendByte(SENSOR_DATA);
+      while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
+        sensorID_t sensorID;
+        xQueueReceive(sensorDataQueue, &sensorID, 0);
+        // Sends sensor id
+        SerialInterface::sendByte(sensorID);
+        // Sends sensor data
+        SerialInterface::sendData<int16_t>(magSensors[sensorID].rawY());
+        SerialInterface::sendData<int16_t>(magSensors[sensorID].rawZ());
+        // Sends end of data frame
+        SerialInterface::sendEnd();
+      }
+      SerialInterface::clearHeader();
     }
   }
 }
