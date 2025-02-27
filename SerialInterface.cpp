@@ -15,7 +15,7 @@ void SerialInterface::begin(long baudRate) {
 
 /// @brief Checks incoming serial data for a header or end byte
 /// @return true (header to process), false (no header to process)
-bool SerialInterface::processingHeader() {
+bool SerialInterface::processPacket() {
     // Ensures last data frame and header have been processed
     if (Serial.available()) {
         // Reads one byte of data
@@ -47,7 +47,7 @@ uint8_t SerialInterface::getHeader() {
     return header;
 }
 
-void SerialInterface::clearHeader() {
+void SerialInterface::clearPacket() {
     headerFlag = false;
     endFlag = true;
 }
@@ -56,15 +56,41 @@ void SerialInterface::sendByte(uint8_t data) {
     Serial.write(data);
 }
 
+void SerialInterface::sendBytes(uint8_t* buffer, uint8_t len) {
+    Serial.write(buffer, len);
+}
+
+void SerialInterface::sendInt16(int16_t data) {
+    uint8_t buffer[sizeof(data)];
+    for (int i = 0; i < sizeof(data); i++) {
+        buffer[i] = (data & 0xFF);
+        data = data >> 8;
+    }
+    SerialInterface::sendBytes(buffer, sizeof(data));
+}
+
 void SerialInterface::sendEnd() {
-    Serial.write(END);
+    SerialInterface::sendByte(END);
 }
 
 uint8_t SerialInterface::readByte() {
-    if (Serial.available() > 0) {
-        return Serial.read();
+    return Serial.read();
+}
+
+bool SerialInterface::readBytes(uint8_t* buffer, uint8_t len) {
+    if (Serial.available() >= len) {
+        Serial.readBytes(buffer, len);
+        return true;
     }
-    return 0;
+    return false;
+}
+
+int16_t SerialInterface::readInt() {
+    int16_t value;
+    if (Serial.available() >= sizeof(value)) {
+        value = Serial.parseInt();
+    }
+    return value;
 }
 
 float SerialInterface::readFloat() {

@@ -235,16 +235,16 @@ void TaskSerialInterface(void *pvParameters) {
     // Waits for notification from scheduler or sensor read
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    if (SerialInterface::processingHeader()) {
+    if (SerialInterface::processPacket()) {
       switch (SerialInterface::getHeader()) {
         case PING:
           // Sends ping acknowledgement
           SerialInterface::sendByte(PING_ACK);
-          SerialInterface::clearHeader();
+          SerialInterface::clearPacket();
           break;
         case SERVO_POWER:
           // Updates servo controller
-          if (Serial.available() > 5) {
+          if (Serial.available() >= 5) {
             // Reads servo id and power
             uint8_t servoID = SerialInterface::readByte();
             float power = SerialInterface::readFloat();
@@ -254,7 +254,7 @@ void TaskSerialInterface(void *pvParameters) {
             }
           } else if (SerialInterface::isEnded()) {
             // Clears header if end of data frame reached
-            SerialInterface::clearHeader();
+            SerialInterface::clearPacket();
             // Notifies servo controller to update PWM ranges
             xTaskNotifyGive(servoControllerHandle);
           }
@@ -271,8 +271,8 @@ void TaskSerialInterface(void *pvParameters) {
         // Sends sensor id
         SerialInterface::sendByte(sensorID);
         // Sends sensor data
-        SerialInterface::sendData<int16_t>(magSensors[sensorID].rawY());
-        SerialInterface::sendData<int16_t>(magSensors[sensorID].rawZ());
+        SerialInterface::sendInt16(magSensors[sensorID].rawY());
+        SerialInterface::sendInt16(magSensors[sensorID].rawZ());
       }
       // Sends end of data frame
       SerialInterface::sendEnd();

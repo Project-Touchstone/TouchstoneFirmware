@@ -36,9 +36,9 @@ class MagSensor {
         float getX();
         float getY();
         float getZ();
-        int32_t rawX();
-        int32_t rawY();
-        int32_t rawZ();
+        int16_t rawX();
+        int16_t rawY();
+        int16_t rawZ();
 };
 
 #endif

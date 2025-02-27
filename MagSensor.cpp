@@ -70,25 +70,25 @@ float MagSensor::getZ() {
 }
 
 /// @brief Gets raw X-axis magnetic field data
-int32_t MagSensor::rawX() {
+int16_t MagSensor::rawX() {
     taskENTER_CRITICAL(spinlock);
-    int32_t rawX = magSensor.rawX();
+    int16_t rawX = magSensor.rawX();
     taskEXIT_CRITICAL(spinlock);
     return rawX;
 }
 
 /// @brief Gets raw Y-axis magnetic field data
-int32_t MagSensor::rawY() {
+int16_t MagSensor::rawY() {
     taskENTER_CRITICAL(spinlock);
-    int32_t rawY = magSensor.rawY();
+    int16_t rawY = magSensor.rawY();
     taskEXIT_CRITICAL(spinlock);
     return rawY;
 }
 
 /// @brief Gets raw Z-axis magnetic field data
-int32_t MagSensor::rawZ() {
+int16_t MagSensor::rawZ() {
     taskENTER_CRITICAL(spinlock);
-    int32_t rawZ = magSensor.rawZ();
+    int16_t rawZ = magSensor.rawZ();
     taskEXIT_CRITICAL(spinlock);
     return rawZ;
 }

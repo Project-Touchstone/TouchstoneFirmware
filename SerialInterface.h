@@ -19,7 +19,7 @@ class SerialInterface {
         static void begin(long baudRate);
 
         // Checks for an incoming header or end byte
-        static bool processingHeader();
+        static bool processPacket();
 
         // Gets the current header
         static uint8_t getHeader();
@@ -27,34 +27,29 @@ class SerialInterface {
         // Sends a byte of data
         static void sendByte(uint8_t data);
 
-        // Sends a data type in binary form
-        template <typename T>
-        static void sendData(T data);
+        static void sendBytes(uint8_t* buffer, uint8_t len);
+
+        // Sends an integer
+        static void sendInt16(int16_t data);
 
         // Sends the end of data frame
         static void sendEnd();
 
-        // Checks if the header has ended
+        // Checks if the packet has ended
         static bool isEnded();
 
         // Reads a byte of data
         static uint8_t readByte();
 
+        static bool readBytes(uint8_t* buffer, uint8_t len);
+
+        static int16_t readInt();
+
         // Reads a 32-bit float
         static float readFloat();
 
-        // Clears the current header
-        static void clearHeader();
+        // Clears the current packet
+        static void clearPacket();
 };
-
-template <typename T>
-void SerialInterface::sendData(T data) {
-    uint8_t buffer[sizeof(data)];
-    for (int i = 0; i < sizeof(data); i++) {
-        buffer[i] = (data & 0xFF);
-        data = data >> 8;
-    }
-    Serial.write(buffer, sizeof(data));
-}
 
 #endif
