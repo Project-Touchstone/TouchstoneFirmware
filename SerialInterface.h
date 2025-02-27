@@ -19,7 +19,7 @@ class SerialInterface {
         static void begin(long baudRate);
 
         // Checks for an incoming header or end byte
-        static bool processHeader();
+        static bool processingHeader();
 
         // Gets the current header
         static uint8_t getHeader();
