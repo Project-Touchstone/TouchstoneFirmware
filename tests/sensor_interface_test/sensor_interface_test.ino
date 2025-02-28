@@ -6,8 +6,8 @@
 #include <Wire.h>
 
 // Cores to pin RTOS tasks to
-#define CORE_0 0
-#define CORE_1 1
+uint8_t CORE_0 = 0;
+uint8_t CORE_1 = 1;
 
 // I2C pins
 #define I2C_SDA_0 21
@@ -66,13 +66,6 @@ uint8_t sensorsByBus[2][8];
 // Number of sensors on each bus
 uint8_t sensorCountByBus[2] = {0, 0};
 
-// Define task handles
-TaskHandle_t schedulerHandles[2];
-TaskHandle_t pwmCycleHandle;
-TaskHandle_t sensorReadHandles[2];
-TaskHandle_t servoControllerHandle;
-TaskHandle_t serialInterfaceHandle;
-
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
 void TaskScheduler(void *pvParameters);
@@ -80,6 +73,13 @@ void TaskPWMCycle(void *pvParameters);
 void TaskSensorRead(void *pvParameters);
 void TaskServoController(void *pvParameters);
 void TaskSerialInterface(void *pvParameters);
+
+// Define task handles
+TaskHandle_t schedulerHandles[2];
+TaskHandle_t pwmCycleHandle;
+TaskHandle_t sensorReadHandles[2];
+TaskHandle_t servoControllerHandle;
+TaskHandle_t serialInterfaceHandle;
 
 // Define sensor data queue
 typedef uint8_t sensorID_t;
@@ -139,11 +139,11 @@ void setup() {
   
   xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverPort>>3);
 
-  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)0, 3, &sensorReadHandles[0], 0);
-  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)1, 3, &sensorReadHandles[1], 1);
+  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 3, &sensorReadHandles[0], CORE_0);
+  xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], CORE_1);
 
-  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 0", 2048, (void *)0, 1, &schedulerHandles[0], 0);
-  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, (void *)1, 1, &schedulerHandles[1], 1);
+  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 0", 2048, (void *)&CORE_0, 1, &schedulerHandles[0], CORE_0);
+  xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, (void *)&CORE_1, 1, &schedulerHandles[1], CORE_1);
   
   xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 2, &pwmCycleHandle, tskNO_AFFINITY);
 
@@ -170,13 +170,13 @@ void IRAM_ATTR onPWMStart() {
 void TaskScheduler(void *pvParameters) {
   uint8_t core = *((uint8_t*) pvParameters);
   for (;;) {
-    /*if (Serial.available() > 0) {
+    if (Serial.available() > 0) {
       // If serial data needs to be received, yields to serial interface
       xTaskNotifyGive(serialInterfaceHandle);
     } else {
       //Otherwise yields to sensor reading
       xTaskNotifyGive(sensorReadHandles[core]);
-    }*/
+    }
     vTaskDelay(1);
   }
 }
