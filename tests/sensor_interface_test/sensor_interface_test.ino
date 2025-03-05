@@ -87,7 +87,7 @@ QueueHandle_t sensorDataQueue;
 
 uint64_t startTime;
 
-volatile bool aliveFlag;
+volatile bool aliveFlag = false;
 
 // The setup function runs once when you press reset or power on the board.
 void setup() {
@@ -175,7 +175,7 @@ void TaskScheduler(void *pvParameters) {
     if (Serial.available() > 0) {
       // If serial data needs to be received, yields to serial interface
       xTaskNotifyGive(serialInterfaceHandle);
-    } else {
+    } else if (aliveFlag) {
       //Otherwise yields to sensor reading
       xTaskNotifyGive(sensorReadHandles[core]);
     }
@@ -240,6 +240,7 @@ void TaskSerialInterface(void *pvParameters) {
     if (SerialInterface::processPacket()) {
       switch (SerialInterface::getHeader()) {
         case PING:
+          aliveFlag = true;
           // Sends ping acknowledgement
           SerialInterface::sendByte(PING_ACK);
           SerialInterface::clearPacket();
