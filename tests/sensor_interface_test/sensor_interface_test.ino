@@ -87,6 +87,8 @@ QueueHandle_t sensorDataQueue;
 
 uint64_t startTime;
 
+volatile bool aliveFlag;
+
 // The setup function runs once when you press reset or power on the board.
 void setup() {
   // Initialize serial communication at 115200 bits per second:
@@ -188,7 +190,7 @@ void TaskPWMCycle(void *pvParameters) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     // Sends PWM cycle start header
-    SerialInterface::sendByte(PWM_CYCLE);
+    //SerialInterface::sendByte(PWM_CYCLE);
 
     // Updates PWM ranges based on servo powers
     for (uint8_t i = 0; i < NUM_MOTORS; i++) {
@@ -264,18 +266,18 @@ void TaskSerialInterface(void *pvParameters) {
       // If no header to process, sends sensor data
       
       // Sends data header
-      SerialInterface::sendByte(SENSOR_DATA);
+      //SerialInterface::sendByte(SENSOR_DATA);
       while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
         sensorID_t sensorID;
         xQueueReceive(sensorDataQueue, &sensorID, 0);
         // Sends sensor id
-        SerialInterface::sendByte(sensorID);
+        //SerialInterface::sendByte(sensorID);
         // Sends sensor data
-        SerialInterface::sendInt16(magSensors[sensorID].rawY());
-        SerialInterface::sendInt16(magSensors[sensorID].rawZ());
+        //SerialInterface::sendInt16(magSensors[sensorID].rawY());
+        //SerialInterface::sendInt16(magSensors[sensorID].rawZ());
       }
       // Sends end of data frame
-      SerialInterface::sendEnd();
+      //SerialInterface::sendEnd();
     }
   }
 }
