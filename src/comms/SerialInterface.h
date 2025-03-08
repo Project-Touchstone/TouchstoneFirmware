@@ -12,6 +12,8 @@ class SerialInterface {
         static uint8_t header;
         // Whether new header has been received
         static bool headerFlag;
+        // Whether to check for end of packet
+        static bool checkEndFlag;
         // Whether current data frame has ended
         static bool endFlag;
     public:
@@ -38,7 +40,10 @@ class SerialInterface {
         // Sends the end of data frame
         static void sendEnd();
 
-        // Checks if the packet has ended
+        // Checks to see if the packet has ended
+        static void checkEnd();
+
+        // If the packet has ended
         static bool isPacketEnded();
 
         // Reads a byte of data
