@@ -19,7 +19,10 @@ class SerialInterface {
         static void begin(long baudRate);
 
         // Checks for an incoming header or end byte
-        static bool processPacket();
+        static void update();
+
+        // Whether a header is ready
+        static bool headerReady();
 
         // Gets the current header
         static uint8_t getHeader();
@@ -36,14 +39,14 @@ class SerialInterface {
         static void sendEnd();
 
         // Checks if the packet has ended
-        static bool isEnded();
+        static bool isPacketEnded();
 
         // Reads a byte of data
         static uint8_t readByte();
 
         static bool readBytes(uint8_t* buffer, uint8_t len);
 
-        static int16_t readInt();
+        static int16_t readInt16();
 
         // Reads a 32-bit float
         static float readFloat();

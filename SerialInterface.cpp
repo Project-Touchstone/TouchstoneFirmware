@@ -14,8 +14,7 @@ void SerialInterface::begin(long baudRate) {
 }
 
 /// @brief Checks incoming serial data for a header or end byte
-/// @return true (header to process), false (no header to process)
-bool SerialInterface::processPacket() {
+void SerialInterface::update() {
     // Ensures last data frame and header have been processed
     if (Serial.available()) {
         // Reads one byte of data
@@ -24,7 +23,6 @@ bool SerialInterface::processPacket() {
         if (byte == END) {
             // Sets end flag
             endFlag = true;
-            return false;
         } else if (endFlag) {
             // If end of data frame was already reached, starts new data frame
             endFlag = false;
@@ -32,14 +30,14 @@ bool SerialInterface::processPacket() {
             // Sets header flag
             headerFlag = true;
         }
-
-        return true;
-    } else {
-        return false;
     }
 }
 
-bool SerialInterface::isEnded() {
+bool SerialInterface::headerReady() {
+    return headerFlag;
+}
+
+bool SerialInterface::isPacketEnded() {
     return endFlag;
 }
 
@@ -85,7 +83,7 @@ bool SerialInterface::readBytes(uint8_t* buffer, uint8_t len) {
     return false;
 }
 
-int16_t SerialInterface::readInt() {
+int16_t SerialInterface::readInt16() {
     int16_t value;
     if (Serial.available() >= sizeof(value)) {
         value = Serial.parseInt();

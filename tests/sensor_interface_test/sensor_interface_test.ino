@@ -9,6 +9,9 @@
 uint8_t CORE_0 = 0;
 uint8_t CORE_1 = 1;
 
+//Built in LED
+#define LED_BUILTIN 2
+
 // I2C pins
 #define I2C_SDA_0 21
 #define I2C_SCL_0 22
@@ -50,6 +53,9 @@ using namespace SerialHeaders;
 
 // Servo channels for DRIFT motors
 const uint8_t servoChannels[NUM_MOTORS] = {0, 1, 2, 3};
+
+// Servo power multiplier
+const float servoPowerMultiplier = 1/32768;
 
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{0, 1}, {7, 6}, {8, 9}, {5, 4}};
@@ -93,6 +99,9 @@ volatile bool aliveFlag = false;
 void setup() {
   // Initialize serial communication at 115200 bits per second:
   SerialInterface::begin(115200);
+
+  //Configures built-in LED
+  pinMode(LED_BUILTIN, OUTPUT);
   
   // Initialize I2C ports
   Wire.begin(I2C_SDA_0, I2C_SCL_0);
@@ -237,25 +246,28 @@ void TaskSerialInterface(void *pvParameters) {
     // Waits for notification from scheduler or sensor read
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    if (SerialInterface::processPacket()) {
+    // Updates serial data
+    SerialInterface::update();
+    if (SerialInterface::headerReady()) {
       switch (SerialInterface::getHeader()) {
         case PING:
           aliveFlag = true;
+          digitalWrite(LED_BUILTIN, HIGH);
           // Sends ping acknowledgement
           SerialInterface::sendByte(PING_ACK);
           SerialInterface::clearPacket();
           break;
         case SERVO_POWER:
           // Updates servo controller
-          if (Serial.available() >= 5) {
+          if (Serial.available() >= 3) {
             // Reads servo id and power
             uint8_t servoID = SerialInterface::readByte();
-            float power = SerialInterface::readFloat();
-            //Ensures servo ID is within range and power is a legitimate value
-            if (servoID < sizeof(servoChannels)/sizeof(servoChannels[0]) && !isnan(power) && !isinf(power)) {
+            float power = static_cast<float>(SerialInterface::readInt16())*servoPowerMultiplier;
+            //Ensures servo ID is within range
+            if (servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) {
               ServoController::setPower(servoChannels[servoID], power);
             }
-          } else if (SerialInterface::isEnded()) {
+          } else if (SerialInterface::isPacketEnded()) {
             // Clears header if end of data frame reached
             SerialInterface::clearPacket();
             // Notifies servo controller to update PWM ranges
@@ -263,22 +275,22 @@ void TaskSerialInterface(void *pvParameters) {
           }
           break;
       }
-    } else if (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
+    } else if (aliveFlag && uxQueueMessagesWaiting(sensorDataQueue) > 0) {
       // If no header to process, sends sensor data
       
       // Sends data header
-      //SerialInterface::sendByte(SENSOR_DATA);
+      SerialInterface::sendByte(SENSOR_DATA);
       while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
         sensorID_t sensorID;
         xQueueReceive(sensorDataQueue, &sensorID, 0);
         // Sends sensor id
-        //SerialInterface::sendByte(sensorID);
+        SerialInterface::sendByte(sensorID);
         // Sends sensor data
-        //SerialInterface::sendInt16(magSensors[sensorID].rawY());
-        //SerialInterface::sendInt16(magSensors[sensorID].rawZ());
+        SerialInterface::sendInt16(magSensors[sensorID].rawY());
+        SerialInterface::sendInt16(magSensors[sensorID].rawZ());
       }
       // Sends end of data frame
-      //SerialInterface::sendEnd();
+      SerialInterface::sendEnd();
     }
   }
 }
