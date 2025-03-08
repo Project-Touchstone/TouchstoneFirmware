@@ -6,11 +6,14 @@
 #ifndef MagSensor_h
 #define MagSensor_h
 
-#include "Arduino.h"
-#include "BusChain.h"
+//External imports
+#include <Arduino.h>
 #include <Tlv493d.h>
 #include <math.h>
-#include "freertos/task.h"
+#include <freertos/task.h>
+
+//Local imports
+#include "../comms/BusChain.h"
 
 class MagSensor {
     private:

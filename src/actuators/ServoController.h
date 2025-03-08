@@ -6,10 +6,13 @@
 #ifndef ServoController_h
 #define ServoController_h
 
-#include "Arduino.h"
-#include <BusChain.h>
+//External imports
+#include <Arduino.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <math.h>
+
+//Local imports
+#include "../comms/BusChain.h"
 
 #define MAX_SERVOS 16
 #define DEFAULT_ADDRESS 0x40

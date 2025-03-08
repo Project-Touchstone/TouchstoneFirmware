@@ -6,10 +6,10 @@
 #ifndef BusChain_h
 #define BusChain_h
 
-#include "Arduino.h"
+//External imports
+#include <Arduino.h>
 #include <Wire.h>
-#include "freertos/task.h"
-#include <Wire.h>
+#include <freertos/task.h>
 
 #define ROOT_ADDRESS 0x70
 

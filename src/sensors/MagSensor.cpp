@@ -4,7 +4,6 @@
  */
 
 #include "MagSensor.h"
-#include "BusChain.h"
 
 /// @brief Default constructor
 MagSensor::MagSensor() {

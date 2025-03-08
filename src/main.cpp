@@ -1,16 +1,17 @@
-#include "ServoController.h"
-#include "BusChain.h"
-#include "MagSensor.h"
-#include "SerialInterface.h"
+//External imports
+#include <Arduino.h>
 #include <math.h>
 #include <Wire.h>
+
+//Local imports
+#include "comms/BusChain.h"
+#include "comms/SerialInterface.h"
+#include "actuators/ServoController.h"
+#include "sensors/MagSensor.h"
 
 // Cores to pin RTOS tasks to
 uint8_t CORE_0 = 0;
 uint8_t CORE_1 = 1;
-
-//Built in LED
-#define LED_BUILTIN 2
 
 // I2C pins
 #define I2C_SDA_0 21
