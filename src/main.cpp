@@ -33,7 +33,7 @@ uint8_t BUSCHAIN_1 = 1;
 #define NUM_MOTORS 3
 
 //Serial baud rate
-#define BAUD_RATE 115200//921600
+#define BAUD_RATE 921600
 
 namespace SerialHeaders {
   	//Headers from master to controller
@@ -78,14 +78,12 @@ uint8_t sensorCountByBus[2] = {0, 0};
 
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
-void TaskScheduler(void *pvParameters);
 void TaskPWMCycle(void *pvParameters);
 void TaskSensorRead(void *pvParameters);
 void TaskServoController(void *pvParameters);
 void TaskSerialInterface(void *pvParameters);
 
 // Define task handles
-TaskHandle_t schedulerHandles[2];
 TaskHandle_t pwmCycleHandle;
 TaskHandle_t sensorReadHandles[2];
 TaskHandle_t servoControllerHandle;
@@ -99,7 +97,7 @@ QueueHandle_t sensorDataQueue;
 typedef uint8_t servoID_t;
 QueueHandle_t servoDataQueue;
 
-volatile bool aliveFlag = true;//false;
+volatile bool aliveFlag = false;
 volatile bool pwmCycleFlag = false;
 
 // The setup function runs once when you press reset or power on the board.
@@ -158,11 +156,8 @@ void setup() {
 	
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverPort>>3);
 
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 3, &sensorReadHandles[0], tskNO_AFFINITY);
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], tskNO_AFFINITY);
-
-	xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 0", 2048, (void *)&CORE_0, 1, &schedulerHandles[0], tskNO_AFFINITY);
-	xTaskCreatePinnedToCore(TaskScheduler, "Scheduler 1", 2048, (void *)&CORE_1, 1, &schedulerHandles[1], tskNO_AFFINITY);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 3, &sensorReadHandles[0], CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], CORE_1);
 	
 	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 2, &pwmCycleHandle, tskNO_AFFINITY);
 
@@ -186,20 +181,6 @@ void IRAM_ATTR onPWMStart() {
 /*--------------------------------------------------*/
 /*---------------------- Tasks ---------------------*/
 /*--------------------------------------------------*/
-void TaskScheduler(void *pvParameters) {
-	uint8_t core = *((uint8_t*) pvParameters);
-	for (;;) {
-		if (Serial.available() > 0) {
-			// If serial data needs to be received, yields to serial interface
-			xTaskNotifyGive(serialInterfaceHandle);
-		} else if (aliveFlag) {
-			//Otherwise yields to sensor reading
-			xTaskNotifyGive(sensorReadHandles[core]);
-		}
-		vTaskDelay(1);
-	}
-}
-
 void TaskPWMCycle(void *pvParameters) {
 	(void)pvParameters;
 	for (;;) {
@@ -220,22 +201,20 @@ void TaskPWMCycle(void *pvParameters) {
 
 void TaskSensorRead(void *pvParameters) {
 	uint8_t bus = *((uint8_t*) pvParameters);
-	uint64_t startTime;
+	while (!aliveFlag) {
+		vTaskDelay(1);
+	}
 	for (;;) {
 		for (uint8_t i = 0; i < sensorCountByBus[bus]; i++) {
-			startTime = micros();
-			// Waits for notification from scheduler before every I2C transaction
-			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-			Serial.println(micros() - startTime);
-			
 			// Gets sensor id and updates from I2C
 			sensorID_t sensorID = sensorsByBus[bus][i];
 			magSensors[sensorID].update();
-
+			
 			// Adds sensor data to queue
 			xQueueSend(sensorDataQueue, &sensorID, 0);
 			// Notifies serial interface to send sensor data
 			xTaskNotifyGive(serialInterfaceHandle);
+			vTaskDelay(1);
 		}
 	}
 }
@@ -255,11 +234,11 @@ void TaskServoController(void *pvParameters) {
 void TaskSerialInterface(void *pvParameters) {
 	(void)pvParameters;
 	for (;;) {
-		// Waits for notification from scheduler or sensor read
+		// Waits for notification from sensor read
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		// Updates serial data
-		/*SerialInterface::update();
+		SerialInterface::update();
 		if (SerialInterface::headerReady()) {
 			switch (SerialInterface::getHeader()) {
 				case PING:
@@ -311,7 +290,7 @@ void TaskSerialInterface(void *pvParameters) {
 				SerialInterface::sendInt16(magSensors[sensorID].rawY());
 				SerialInterface::sendInt16(magSensors[sensorID].rawZ());
 			}
-		}*/
+		}
 	}
 }
 
