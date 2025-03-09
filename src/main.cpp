@@ -50,7 +50,7 @@ namespace SerialHeaders {
 	//Sends sensor data
 	#define SENSOR_DATA 0x2
 	//PWM cycle start
-	#define PWM_CYCLE 0xA                                                                                                        
+	#define PWM_CYCLE 0xA                                                                                                
 }
 
 using namespace SerialHeaders;
@@ -59,7 +59,7 @@ using namespace SerialHeaders;
 const uint8_t servoChannels[NUM_MOTORS] = {1, 2, 3};
 
 // Servo power multiplier
-const float servoPowerMultiplier = 1/32768;
+const float servoPowerMultiplier = 1./32768.;
 
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{7, 6}, {8, 9}, {5, 4}};//{{0, 1}, {7, 6}, {8, 9}, {5, 4}};
@@ -269,12 +269,15 @@ void TaskSerialInterface(void *pvParameters) {
 					if (Serial.available() >= 3) {
 						// Reads servo id and power
 						uint8_t servoID = SerialInterface::readByte();
-						float power = static_cast<float>(SerialInterface::readInt16())*servoPowerMultiplier;
-						//Ensures servo ID is within range
-						if (servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) {
+						int16_t val = SerialInterface::readData<int16_t>();
+						float power = static_cast<float>(val)*servoPowerMultiplier;
+						
+						//Ensures servo ID and power are within ranges
+						if ((servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) && (abs(power) <= 1)) {
+							// Sets servo power
 							ServoController::setPower(servoChannels[servoID], power);
 						}
-						SerialInterface::checkEnd();
+						SerialInterface::clearPacket();
 					} else if (SerialInterface::isPacketEnded()) {
 						// Clears header if end of data frame reached
 						SerialInterface::clearPacket();
@@ -290,7 +293,7 @@ void TaskSerialInterface(void *pvParameters) {
 		} else if (aliveFlag && pwmCycleFlag) {
 			// Notifies master on pwm cycle
 			pwmCycleFlag = false;
-			//SerialInterface::sendByte(PWM_CYCLE);
+			SerialInterface::sendByte(PWM_CYCLE);
 		} else if (aliveFlag && uxQueueMessagesWaiting(sensorDataQueue) > 0) {
 			// If no header to process, sends sensor data
 		

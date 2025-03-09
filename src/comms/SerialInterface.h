@@ -37,6 +37,9 @@ class SerialInterface {
         // Sends an integer
         static void sendInt16(int16_t data);
 
+        // Sends a 32-bit float
+        static void sendFloat(float data);
+
         // Sends the end of data frame
         static void sendEnd();
 
@@ -51,13 +54,22 @@ class SerialInterface {
 
         static bool readBytes(uint8_t* buffer, uint8_t len);
 
-        static int16_t readInt16();
-
-        // Reads a 32-bit float
-        static float readFloat();
+        template <typename T>
+        static T readData();
 
         // Clears the current packet
         static void clearPacket();
 };
+
+template <typename T>
+T SerialInterface::readData() {
+    T data;
+    uint8_t buffer[sizeof(data)];
+    SerialInterface::readBytes(buffer, sizeof(data));
+
+    memcpy(&data, buffer, sizeof(data));
+
+    return data;
+}
 
 #endif

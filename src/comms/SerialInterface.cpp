@@ -67,11 +67,14 @@ void SerialInterface::sendBytes(uint8_t* buffer, uint8_t len) {
 
 void SerialInterface::sendInt16(int16_t data) {
     uint8_t buffer[sizeof(data)];
-    for (int i = 0; i < sizeof(data); i++) {
-        buffer[i] = (data & 0xFF);
-        data = data >> 8;
-    }
-    SerialInterface::sendBytes(buffer, sizeof(data));
+    memcpy(buffer, &data, sizeof(data));
+    sendBytes(buffer, sizeof(data));
+}
+
+void SerialInterface::sendFloat(float data) {
+    uint8_t buffer[sizeof(data)];
+    memcpy(buffer, &data, sizeof(data));
+    sendBytes(buffer, sizeof(data));
 }
 
 void SerialInterface::sendEnd() {
@@ -88,20 +91,4 @@ bool SerialInterface::readBytes(uint8_t* buffer, uint8_t len) {
         return true;
     }
     return false;
-}
-
-int16_t SerialInterface::readInt16() {
-    int16_t value;
-    if (Serial.available() >= sizeof(value)) {
-        value = Serial.parseInt();
-    }
-    return value;
-}
-
-float SerialInterface::readFloat() {
-    float value;
-    if (Serial.available() >= sizeof(value)) {
-        value = Serial.parseFloat();
-    }
-    return value;
 }
