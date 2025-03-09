@@ -156,10 +156,10 @@ void setup() {
 	
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverPort>>3);
 
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 3, &sensorReadHandles[0], CORE_0);
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], CORE_1);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 2, &sensorReadHandles[0], CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 2, &sensorReadHandles[1], CORE_1);
 	
-	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 2, &pwmCycleHandle, tskNO_AFFINITY);
+	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 3, &pwmCycleHandle, tskNO_AFFINITY);
 
 	attachInterrupt(interruptPin, onPWMStart, RISING);
 }
