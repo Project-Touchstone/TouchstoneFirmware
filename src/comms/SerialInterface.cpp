@@ -57,6 +57,15 @@ void SerialInterface::clearPacket() {
     endFlag = true;
 }
 
+void SerialInterface::flush(int8_t numBytes) {
+	if (numBytes < 0) {
+        numBytes = Serial.available();
+	}
+	for (int i = 0; i < numBytes; i++) {
+        Serial.read();
+    }
+}
+
 void SerialInterface::sendByte(uint8_t data) {
     Serial.write(data);
 }

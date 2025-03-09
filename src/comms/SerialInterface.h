@@ -59,6 +59,9 @@ class SerialInterface {
 
         // Clears the current packet
         static void clearPacket();
+
+        // Flushes the read buffer
+        static void flush(int8_t numBytes=-1);
 };
 
 template <typename T>
