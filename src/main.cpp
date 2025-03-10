@@ -33,7 +33,7 @@ uint8_t BUSCHAIN_1 = 1;
 #define NUM_MOTORS 4
 
 //Serial baud rate
-#define BAUD_RATE 921600
+#define BAUD_RATE 460800
 
 namespace SerialHeaders {
   	//Headers from master to controller
@@ -156,8 +156,8 @@ void setup() {
 	
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverPort>>3);
 
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 2, &sensorReadHandles[0], CORE_0);
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 2, &sensorReadHandles[1], CORE_1);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 3, &sensorReadHandles[0], CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], CORE_1);
 	
 	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 3, &pwmCycleHandle, tskNO_AFFINITY);
 
@@ -214,7 +214,6 @@ void TaskSensorRead(void *pvParameters) {
 			xQueueSend(sensorDataQueue, &sensorID, 0);
 			// Notifies serial interface to send sensor data
 			xTaskNotifyGive(serialInterfaceHandle);
-			vTaskDelay(1);
 		}
 	}
 }
