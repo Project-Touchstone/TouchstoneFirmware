@@ -30,7 +30,7 @@ uint8_t BUSCHAIN_1 = 1;
 #define servoDriverPort 3
 
 // DRIFT motors to configure
-#define NUM_MOTORS 3
+#define NUM_MOTORS 4
 
 //Serial baud rate
 #define BAUD_RATE 921600
@@ -56,13 +56,13 @@ namespace SerialHeaders {
 using namespace SerialHeaders;
 
 // Servo channels for DRIFT motors
-const uint8_t servoChannels[NUM_MOTORS] = {1, 2, 3};
+const uint8_t servoChannels[NUM_MOTORS] = {0, 1, 2, 3};
 
 // Servo power multiplier
 const float servoPowerMultiplier = 1./32768.;
 
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
-const uint8_t encoderPorts[NUM_MOTORS][2] = {{7, 6}, {8, 9}, {5, 4}};//{{0, 1}, {7, 6}, {8, 9}, {5, 4}};
+const uint8_t encoderPorts[NUM_MOTORS][2] = {{0, 1}, {7, 6}, {8, 9}, {10, 11}};
 
 // BusChain objects
 BusChain busChains[2];
