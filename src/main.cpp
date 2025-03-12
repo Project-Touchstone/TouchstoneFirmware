@@ -214,6 +214,8 @@ void TaskSensorRead(void *pvParameters) {
 			xQueueSend(sensorDataQueue, &sensorID, 0);
 			// Notifies serial interface to send sensor data
 			xTaskNotifyGive(serialInterfaceHandle);
+			// Yields for other tasks
+			taskYIELD();
 		}
 	}
 }
