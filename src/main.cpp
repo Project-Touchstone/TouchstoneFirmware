@@ -21,7 +21,7 @@ uint8_t CORE_1 = 1;
 uint8_t busChainIDs[2] = {0, 1};
 
 // PWM output pin on channel 0 of servo driver used for servo synchronization
-#define interruptPin 5
+#define interruptPin 4
 
 // Servo driver port
 #define servoDriverPort 3
@@ -30,8 +30,8 @@ uint8_t busChainIDs[2] = {0, 1};
 #define NUM_MOTORS 4
 
 //Serial baud rate
-#define SERIAL_BAUD_RATE 115200//460800
-#define I2C_BAUD_RATE 100000
+#define SERIAL_BAUD_RATE 460800
+#define I2C_BAUD_RATE 1000000
 
 namespace SerialHeaders {
   	//Headers from master to controller
@@ -140,20 +140,19 @@ void setup() {
 	sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(sensorID_t));
 	servoDataQueue = xQueueCreate(NUM_MOTORS, sizeof(servoID_t));
 
-	//xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
+	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
 	
-	//xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_0);
+	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_1);
 
-	//xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read", 2048, NULL, 3, &sensorReadHandle, CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read", 2048, NULL, 3, &sensorReadHandle, CORE_0);
 	
-	//xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, CORE_1);
+	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, CORE_1);
 
 	attachInterrupt(interruptPin, onPWMStart, RISING);
 }
 
 // Called on rising pwm interrupt pin
 void IRAM_ATTR onPWMStart() {
-	digitalWrite(LED_BUILTIN, HIGH);
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	// Updates pwm cycle timer for servo synchronization
