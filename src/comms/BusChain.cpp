@@ -26,7 +26,7 @@ void BusChain::begin(uint8_t* busIds, TwoWire* i2cPort) {
 }
 
 /// @brief Opens I2C channel to port
-/// @param port Port number (8 per sensor chip, 16 per BusChain board)
+/// @param port Port number (8 per board)
 /// @return 0 (successful), >0 (error)
 uint8_t BusChain::selectPort(uint8_t port) {
 	xSemaphoreTake(mutex, portMAX_DELAY);
