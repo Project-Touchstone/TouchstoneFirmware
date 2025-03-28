@@ -33,7 +33,8 @@ uint8_t BUSCHAIN_1 = 1;
 #define NUM_MOTORS 4
 
 //Serial baud rate
-#define BAUD_RATE 460800
+#define SERIAL_BAUD_RATE 460800
+#define I2C_BAUD_RATE 100000
 
 namespace SerialHeaders {
   	//Headers from master to controller
@@ -93,9 +94,6 @@ TaskHandle_t serialInterfaceHandle;
 typedef uint8_t sensorID_t;
 QueueHandle_t sensorDataQueue;
 
-// Sensor read mutex
-SemaphoreHandle_t sensorReadMutex;
-
 // Define servo data queue
 typedef uint8_t servoID_t;
 QueueHandle_t servoDataQueue;
@@ -106,7 +104,7 @@ volatile bool pwmCycleFlag = false;
 // The setup function runs once when you press reset or power on the board.
 void setup() {
 	// Initialize serial communication at 115200 bits per second:
-	SerialInterface::begin(BAUD_RATE);
+	SerialInterface::begin(SERIAL_BAUD_RATE);
 	
 	//Configures built-in LED
 	pinMode(LED_BUILTIN, OUTPUT);
@@ -116,16 +114,16 @@ void setup() {
 	Wire1.begin(I2C_SDA_1, I2C_SCL_1);
 
 	//Initializes buschain objects
-	//busChains[0].begin(&BUSCHAIN_0, &Wire);
-	//busChains[1].begin(&BUSCHAIN_1, &Wire1);
+	busChains[0].begin(&BUSCHAIN_0, &Wire);
+	busChains[1].begin(&BUSCHAIN_1, &Wire1);
 
 	// Initialize servo driver board, flags connection error
-	/*if (!ServoController::begin(servoDriverPort % 8, &busChains[servoDriverPort >> 3])) {
+	if (!ServoController::begin(servoDriverPort % 8, &busChains[servoDriverPort >> 3])) {
 		Serial.println("Error connecting to servo driver");
 		while (true) {
 			delay(1000);
 		}
-	}*/
+	}
 
 	// Initialize encoders in order of id
 	for (uint8_t i = 0; i < NUM_MOTORS * 2; i++) {
@@ -137,35 +135,33 @@ void setup() {
 		sensorsByBus[bus][sensorCountByBus[bus]++] = i;
 
 		// Attempts to connect through associated port and buschain
-		/*if (!magSensors[i].begin(encoderPort % 8, &busChains[bus])) {
+		if (!magSensors[i].begin(encoderPort % 8, &busChains[bus])) {
 			Serial.print("Error connecting to encoder port: ");
 			Serial.println(encoderPort);
 			while (true) {
 				delay(1000);
 			}
-		}*/
+		}
   	}
 
 	// Sets bus parameters
 	Wire.setTimeout(1000);
-	Wire.setClock(1000000);
+	Wire.setClock(I2C_BAUD_RATE);
 	Wire1.setTimeout(1000);
-	Wire1.setClock(1000000);
+	Wire1.setClock(I2C_BAUD_RATE);
 
 	sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(sensorID_t));
-	sensorReadMutex = xSemaphoreCreateMutex();
 	servoDataQueue = xQueueCreate(NUM_MOTORS, sizeof(servoID_t));
 
 	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, tskNO_AFFINITY);
 	
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, servoDriverPort>>3);
 
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], CORE_1);
-	xTaskNotifyGive(sensorReadHandles[1]);
 	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 0", 2048, (void *)&CORE_0, 3, &sensorReadHandles[0], CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read 1", 2048, (void *)&CORE_1, 3, &sensorReadHandles[1], CORE_1);
 	xTaskNotifyGive(sensorReadHandles[0]);
 	
-	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, tskNO_AFFINITY);
+	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 3, &pwmCycleHandle, tskNO_AFFINITY);
 
 	attachInterrupt(interruptPin, onPWMStart, RISING);
 }
@@ -175,7 +171,7 @@ void IRAM_ATTR onPWMStart() {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	// Updates pwm cycle timer for servo synchronization
-	//ServoController::updatePWMTime();
+	ServoController::updatePWMTime();
 
 	// Notifies pwm cycle task to wake
 	vTaskNotifyGiveFromISR(pwmCycleHandle, &xHigherPriorityTaskWoken);
@@ -200,7 +196,7 @@ void TaskPWMCycle(void *pvParameters) {
 
 		// Updates PWM ranges based on servo powers
 		for (uint8_t i = 0; i < NUM_MOTORS; i++) {
-			//ServoController::updatePWMCompute(servoChannels[i]);
+			ServoController::updatePWMCompute(servoChannels[i]);
 		}
 	}
 }
@@ -218,18 +214,13 @@ void TaskSensorRead(void *pvParameters) {
 			
 			// Gets sensor id and updates from I2C
 			sensorID_t sensorID = sensorsByBus[bus][i];
-			//magSensors[sensorID].update();
+			magSensors[sensorID].update();
 			
 			// Adds sensor ID to queue
-			xSemaphoreTake(sensorReadMutex, portMAX_DELAY);
             xQueueSend(sensorDataQueue, &sensorID, 0);
-			xSemaphoreGive(sensorReadMutex);
 
 			// Notifies serial interface to send sensor data
 			xTaskNotifyGive(serialInterfaceHandle);
-
-			//Yields to other tasks
-			taskYIELD();
 		}
 	}
 }
@@ -242,19 +233,14 @@ void TaskServoController(void *pvParameters) {
 		xQueueReceive(servoDataQueue, &servoID, portMAX_DELAY);
 
 		// Sends PWM ranges to PWM driver over I2C
-		//ServoController::updatePWMDriver(servoChannels[servoID]);
+		ServoController::updatePWMDriver(servoChannels[servoID]);
 	}
 }
 
 void TaskSerialInterface(void *pvParameters) {
 	(void)pvParameters;
 	for (;;) {
-		if (aliveFlag) {
-			// Waits for notification from sensor read
-			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		} else {
-			vTaskDelay(1);
-		}
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		
 		// Updates serial data
 		SerialInterface::update();
@@ -278,7 +264,7 @@ void TaskSerialInterface(void *pvParameters) {
 						//Ensures servo ID and power are within ranges
 						if ((servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) && (abs(power) <= 1)) {
 							// Sets servo power
-							//ServoController::setPower(servoChannels[servoID], power);
+							ServoController::setPower(servoChannels[servoID], power);
 						}
 						// Adds servo to queue
 						xQueueSend(servoDataQueue, &servoID, 0);
@@ -306,8 +292,8 @@ void TaskSerialInterface(void *pvParameters) {
 				// Sends sensor id
 				SerialInterface::sendByte(sensorID);
 				// Sends sensor data
-				SerialInterface::sendInt16(0);//magSensors[sensorID].rawY());
-				SerialInterface::sendInt16(0);//magSensors[sensorID].rawZ());
+				SerialInterface::sendInt16(magSensors[sensorID].rawY());
+				SerialInterface::sendInt16(magSensors[sensorID].rawZ());
 			}
 		}
 	}
