@@ -30,7 +30,7 @@ uint8_t busChainIDs[2] = {0, 1};
 #define NUM_MOTORS 4
 
 //Serial baud rate
-#define SERIAL_BAUD_RATE 460800
+#define SERIAL_BAUD_RATE 115200
 #define I2C_BAUD_RATE 1000000
 
 namespace SerialHeaders {
