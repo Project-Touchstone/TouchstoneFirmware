@@ -57,7 +57,7 @@ using namespace SerialHeaders;
 const uint8_t servoChannels[NUM_MOTORS] = {0, 1, 2, 3};
 
 // Servo power multiplier
-const float servoPowerMultiplier = 1./32768.;
+const float servoPowerMultiplier = 1./32767.;
 
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};

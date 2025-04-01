@@ -14,7 +14,7 @@
 //Local imports
 #include "../comms/BusChain.h"
 
-#define MAX_SERVOS 16
+#define MAX_SERVOS 15
 #define DEFAULT_ADDRESS 0x40
 
 class ServoController {

@@ -35,9 +35,6 @@ bool ServoController::begin(uint8_t driverPort, BusChain* busChain) {
 	ServoController::driverPort = driverPort;
 	ServoController::busChain = busChain;
 
-	// Resets pwm parameters
-	reset();
-
 	// Initializes servo driver
 	busChain->selectPort(driverPort);
 	TwoWire* i2cPort = busChain->getI2CPort();
@@ -48,6 +45,9 @@ bool ServoController::begin(uint8_t driverPort, BusChain* busChain) {
 	// Uses first port to trigger interrupt
 	pwmDriver.setPWM(0, 0, 100);
 	busChain->release();
+
+	// Resets pwm parameters
+	reset();
 
 	// Returns success
 	return ret;
