@@ -214,6 +214,10 @@ public:
   // Adafruit_Sensor API/Interface
   bool getEvent(sensors_event_t *accel, sensors_event_t *gyro,
                 sensors_event_t *temp);
+  
+  void getRawTemp(int16_t* temp);
+  void getRawAccel(int16_t* x, int16_t* y, int16_t* z);
+  void getRawGyro(int16_t* x, int16_t* y, int16_t* z);
 
   mpu6050_accel_range_t getAccelerometerRange(void);
   void setAccelerometerRange(mpu6050_accel_range_t);
@@ -300,9 +304,7 @@ private:
 
   int16_t rawAccX, rawAccY, rawAccZ, rawTemp, rawGyroX, rawGyroY, rawGyroZ;
 
-  void getRawTemp(int16_t* temp);
-  void getRawAccel(int16_t* x, int16_t* y, int16_t* z);
-  void getRawGyro(int16_t* x, int16_t* y, int16_t* z);
+
   void fillTempEvent(sensors_event_t *temp, uint32_t timestamp);
   void fillAccelEvent(sensors_event_t *accel, uint32_t timestamp);
   void fillGyroEvent(sensors_event_t *gyro, uint32_t timestamp);

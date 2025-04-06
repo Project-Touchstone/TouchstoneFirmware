@@ -38,16 +38,18 @@ class IMU {
         //Spinlock for RTOS
         portMUX_TYPE* spinlock;
 
+        sensors_event_t a, g, temp;
+
     public:
         IMU();
         bool begin(uint8_t sensorPort, BusChain *busChain);
         void update();
-        float getX();
-        float getY();
-        float getZ();
-        int16_t rawX();
-        int16_t rawY();
-        int16_t rawZ();
+        void getAccel(float *x, float *y, float *z);
+        void getGyro(float *x, float *y, float *z);
+        void getTemp(float *temp);
+        void getRawAccel(int16_t* x, int16_t* y, int16_t* z);
+        void getRawGyro(int16_t* x, int16_t* y, int16_t* z);
+        void getRawTemp(int16_t* temp);
 };
 
 #endif

@@ -8,6 +8,7 @@
 #include "comms/SerialInterface.h"
 #include "actuators/ServoController.h"
 #include "sensors/MagSensor.h"
+#include "sensors/IMU.h"
 
 // Cores to pin RTOS tasks to
 uint8_t CORE_0 = 0;
@@ -62,14 +63,20 @@ const float servoPowerMultiplier = 1./32767.;
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};
 
+// BusChain port for imu
+const uint8_t imuPort = 2;
+
 //TwoWire object
 TwoWire I2C = TwoWire(0);
 
 // BusChain object
 BusChain busChain;
 
-// Sensor objects
+// Magnetic sensor objects
 MagSensor magSensors[NUM_MOTORS*2];
+
+// IMU object
+IMU imu;
 
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
@@ -132,6 +139,14 @@ void setup() {
 			}
 		}
   	}
+
+	// Initializes IMU object
+	if (!imu.begin(imuPort, &busChain)) {
+		Serial.println("Error connecting to IMU");
+		while (true) {
+			
+		}
+	}
 
 	// Sets bus parameters
 	I2C.setTimeout(1000);
