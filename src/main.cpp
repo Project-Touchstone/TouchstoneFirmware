@@ -27,6 +27,12 @@ uint8_t busChainIDs[2] = {0, 1};
 // Servo driver port
 #define servoDriverPort 3
 
+// IMU port
+#define imuPort 2
+
+// IMU sensor i
+#define imuID NUM_MOTORS*2
+
 // DRIFT motors to configure
 #define NUM_MOTORS 4
 
@@ -63,9 +69,6 @@ const float servoPowerMultiplier = 1./32767.;
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};
 
-// BusChain port for imu
-const uint8_t imuPort = 2;
-
 //TwoWire object
 TwoWire I2C = TwoWire(0);
 
@@ -81,13 +84,15 @@ IMU imu;
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
 void TaskPWMCycle(void *pvParameters);
-void TaskSensorRead(void *pvParameters);
+void TaskSensorCritical(void *pvParameters);
+void TaskSensorNonCritical(void *pvParameters);
 void TaskServoController(void *pvParameters);
 void TaskSerialInterface(void *pvParameters);
 
 // Define task handles
 TaskHandle_t pwmCycleHandle;
-TaskHandle_t sensorReadHandle;
+TaskHandle_t sensorCriticalHandle;
+TaskHandle_t sensorNonCriticalHandle;
 TaskHandle_t servoControllerHandle;
 TaskHandle_t serialInterfaceHandle;
 
@@ -99,8 +104,8 @@ QueueHandle_t sensorDataQueue;
 typedef uint8_t servoID_t;
 QueueHandle_t servoDataQueue;
 
-volatile bool aliveFlag = false;
-volatile bool pwmCycleFlag = false;
+bool aliveFlag = false;
+bool pwmCycleFlag = false;
 
 // The setup function runs once when you press reset or power on the board.
 void setup() {
@@ -157,9 +162,11 @@ void setup() {
 
 	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
 	
-	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_1);
+	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_0);
 
-	xTaskCreatePinnedToCore(TaskSensorRead, "Sensor Read", 2048, NULL, 3, &sensorReadHandle, CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorCritical, "Sensor Critical", 2048, NULL, 3, &sensorCriticalHandle, CORE_0);
+
+	xTaskCreatePinnedToCore(TaskSensorNonCritical, "Sensor Non-critical", 2048, NULL, 4, &sensorNonCriticalHandle, CORE_0);
 	
 	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, CORE_1);
 
@@ -188,10 +195,10 @@ void TaskPWMCycle(void *pvParameters) {
 	for (;;) {
 		// Waits for notification from interrupt
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		// Sets PWM cycle flag
-		pwmCycleFlag = true;
 		//Notifies serial interface
 		xTaskNotifyGive(serialInterfaceHandle);
+		//Notifies non-critical sensor task
+		xTaskNotifyGive(sensorNonCriticalHandle);
 
 		// Updates PWM ranges based on servo powers
 		for (uint8_t i = 0; i < NUM_MOTORS; i++) {
@@ -200,7 +207,7 @@ void TaskPWMCycle(void *pvParameters) {
 	}
 }
 
-void TaskSensorRead(void *pvParameters) {
+void TaskSensorCritical(void *pvParameters) {
 	(void)pvParameters;
 	while (!aliveFlag) {
 		vTaskDelay(1);
@@ -217,6 +224,23 @@ void TaskSensorRead(void *pvParameters) {
 			// Notifies serial interface to send sensor data
 			xTaskNotifyGive(serialInterfaceHandle);
 		}
+	}
+}
+
+void TaskSensorNonCritical(void *pvParameters) {
+	(void)pvParameters;
+	while (!aliveFlag) {
+		vTaskDelay(1);
+	}
+	for (;;) {
+		// Waits for notification from pwm cycle task
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+		// Updates IMU
+		imu.update();
+
+		// Sets flag to notify serial interface
+		pwmCycleFlag = true;
 	}
 }
 
@@ -273,6 +297,24 @@ void TaskSerialInterface(void *pvParameters) {
 					break;
 			}
 		} else if (aliveFlag && pwmCycleFlag) {
+			// Sends non-critical sensor data
+			// Sends IMU data
+
+			// Data header
+			SerialInterface::sendByte(SENSOR_DATA);
+			//Sends imu id
+			SerialInterface::sendByte(imuID);
+			//Sends imu data
+			int16_t x, y, z;
+			imu.getRawAccel(&x, &y, &z);
+			SerialInterface::sendInt16(x);
+			SerialInterface::sendInt16(y);
+			SerialInterface::sendInt16(z);
+			imu.getRawGyro(&x, &y, &z);
+			SerialInterface::sendInt16(x);
+			SerialInterface::sendInt16(y);
+			SerialInterface::sendInt16(z);
+			
 			// Notifies master on pwm cycle
 			pwmCycleFlag = false;
 			SerialInterface::sendByte(PWM_CYCLE);
