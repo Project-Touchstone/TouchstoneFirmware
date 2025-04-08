@@ -30,8 +30,8 @@ uint8_t busChainIDs[2] = {0, 1};
 // IMU port
 #define imuPort 2
 
-// IMU sensor i
-#define imuID NUM_MOTORS*2
+// IMU sensor id
+#define imuID 0
 
 // DRIFT motors to configure
 #define NUM_MOTORS 4
@@ -52,10 +52,12 @@ namespace SerialHeaders {
 
 	//Acknowledges ping      
 	#define PING_ACK 0x1
-	//Sends sensor data
-	#define SENSOR_DATA 0x2
 	//PWM cycle start
-	#define PWM_CYCLE 0xA                                                                                                
+	#define PWM_CYCLE 0x2  
+	//Sends sensor data
+	#define MAGSENSOR_DATA 0xA0
+	//Sends IMU data
+	#define IMU_DATA 0xA1                                                                                              
 }
 
 using namespace SerialHeaders;
@@ -146,6 +148,7 @@ void setup() {
   	}
 
 	// Initializes IMU object
+	imu.setParameters(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
 	if (!imu.begin(imuPort, &busChain)) {
 		Serial.println("Error connecting to IMU");
 		while (true) {
@@ -301,7 +304,7 @@ void TaskSerialInterface(void *pvParameters) {
 			// Sends IMU data
 
 			// Data header
-			SerialInterface::sendByte(SENSOR_DATA);
+			SerialInterface::sendByte(IMU_DATA);
 			//Sends imu id
 			SerialInterface::sendByte(imuID);
 			//Sends imu data
@@ -325,7 +328,7 @@ void TaskSerialInterface(void *pvParameters) {
 				sensorID_t sensorID;
 				xQueueReceive(sensorDataQueue, &sensorID, 0);
 				// Sends data header
-				SerialInterface::sendByte(SENSOR_DATA);
+				SerialInterface::sendByte(MAGSENSOR_DATA);
 				// Sends sensor id
 				SerialInterface::sendByte(sensorID);
 				// Sends sensor data

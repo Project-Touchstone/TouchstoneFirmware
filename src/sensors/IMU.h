@@ -15,17 +15,20 @@
 //Local imports
 #include "../comms/BusChain.h"
 
-//Accelerometer range in Gs
-#define ACCEL_RANGE MPU6050_RANGE_2_G
-//Gyro range in degrees per second
-#define GYRO_RANGE MPU6050_RANGE_250_DEG
-//Filter bandwidth frequency
-#define FILTER_BAND MPU6050_BAND_260_HZ
-
 class IMU {
     private:
         //IMU object
         Adafruit_MPU6050 imu;
+
+        //Accelerometer range
+        mpu6050_accel_range_t accelRange = MPU6050_RANGE_2_G;
+        //Gyro range
+        mpu6050_gyro_range_t gyroRange = MPU6050_RANGE_250_DEG;
+        //Filter bandwidth
+        mpu6050_bandwidth_t filterBand = MPU6050_BAND_260_HZ;
+
+        //Sensor I2C address
+        uint8_t i2cAddress = 0x68;
 
         //BusChain object
         BusChain* busChain;
@@ -43,6 +46,7 @@ class IMU {
     public:
         IMU();
         bool begin(uint8_t sensorPort, BusChain *busChain);
+        void setParameters(mpu6050_accel_range_t accelRange, mpu6050_gyro_range_t gyroRange, mpu6050_bandwidth_t filterBand);
         void update();
         void getAccel(float *x, float *y, float *z);
         void getGyro(float *x, float *y, float *z);

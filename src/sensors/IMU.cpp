@@ -25,7 +25,7 @@ bool IMU::begin(uint8_t sensorPort, BusChain* busChain) {
 
 	//Selects sensor port and initializes sensor settings
 	busChain->selectPort(sensorPort);
-	bool ret = imu.begin(104u, i2cPort);
+	bool ret = imu.begin(i2cAddress, i2cPort);
     if (ret) {
         imu.setAccelerometerRange(ACCEL_RANGE);
         imu.setGyroRange(GYRO_RANGE);
@@ -35,6 +35,12 @@ bool IMU::begin(uint8_t sensorPort, BusChain* busChain) {
 
 	//Returns success
 	return ret;
+}
+
+void IMU::setParameters(mpu6050_accel_range_t accelRange, mpu6050_gyro_range_t gyroRange, mpu6050_bandwidth_t filterBand) {
+    this->accelRange = accelRange;
+    this->gyroRange = gyroRange;
+    this->filterBand = filterBand;
 }
 
 /// @brief Updates sensor data
