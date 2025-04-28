@@ -28,7 +28,7 @@ uint8_t busChainIDs[2] = {0, 1};
 #define servoDriverPort 3
 
 // IMU port
-#define imuPort 2
+#define imuPort 13
 
 // IMU sensor id
 #define imuID 0
@@ -54,10 +54,12 @@ namespace SerialHeaders {
 	#define PING_ACK 0x1
 	//PWM cycle start
 	#define PWM_CYCLE 0x2  
-	//Sends sensor data
-	#define MAGSENSOR_DATA 0xA0
+	//Sends magnetic encoder data
+	#define MAGENCODER_DATA 0xA0
+	//Sends magnetic tracker data
+	#define MAGTRACKER_DATA 0xA1
 	//Sends IMU data
-	#define IMU_DATA 0xA1                                                                                              
+	#define IMU_DATA 0xA2                                                                                              
 }
 
 using namespace SerialHeaders;
@@ -71,6 +73,9 @@ const float servoPowerMultiplier = 1./32767.;
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};
 
+// Magnetic tracker ports
+const uint8_t magTrackerPorts[2] = {15, 14};
+
 //TwoWire object
 TwoWire I2C = TwoWire(0);
 
@@ -79,6 +84,9 @@ BusChain busChain;
 
 // Magnetic sensor objects
 MagSensor magSensors[NUM_MOTORS*2];
+
+//Magnetic tracker objects
+MagSensor magTrackers[2];
 
 // IMU object
 IMU imu;
@@ -135,7 +143,6 @@ void setup() {
 	for (uint8_t i = 0; i < NUM_MOTORS * 2; i++) {
 		// Finds encoder port for sensor id
 		uint8_t encoderPort = encoderPorts[i / 2][i % 2];
-		uint8_t bus = encoderPort >> 3;
 
 		// Attempts to connect through associated port and buschain
 		if (!magSensors[i].begin(encoderPort, &busChain)) {
@@ -155,6 +162,21 @@ void setup() {
 			
 		}
 	}
+
+	// Initializes magnetic trackers
+	for (uint8_t i = 0; i < 2; i++) {
+		// Finds tracker port for sensor id
+		uint8_t trackerPort = magTrackerPorts[i];
+
+		// Attempts to connect through associated port and buschain
+		if (!magTrackers[i].begin(trackerPort, &busChain)) {
+			Serial.print("Error connecting to magnetic tracker port: ");
+			Serial.println(trackerPort);
+			while (true) {
+				
+			}
+		}
+  	}
 
 	// Sets bus parameters
 	I2C.setTimeout(1000);
@@ -238,9 +260,13 @@ void TaskSensorNonCritical(void *pvParameters) {
 	for (;;) {
 		// Waits for notification from pwm cycle task
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
+		
 		// Updates IMU
 		imu.update();
+		// Updates magnetic trackers
+		for (uint8_t i = 0; i < 2; i++) {
+			magTrackers[i].update();
+		}
 
 		// Sets flag to notify serial interface
 		pwmCycleFlag = true;
@@ -317,6 +343,17 @@ void TaskSerialInterface(void *pvParameters) {
 			SerialInterface::sendInt16(x);
 			SerialInterface::sendInt16(y);
 			SerialInterface::sendInt16(z);
+
+			// Sends magnetic tracker data
+			for (uint8_t i = 0; i < 2; i++) {
+				// Data header
+				SerialInterface::sendByte(MAGTRACKER_DATA);
+				//Sends tracker id
+				SerialInterface::sendByte(i);
+				//Sends tracker data
+				SerialInterface::sendInt16(magSensors[i].rawY());
+				SerialInterface::sendInt16(magSensors[i].rawZ());
+			}
 			
 			// Notifies master on pwm cycle
 			pwmCycleFlag = false;
@@ -328,7 +365,7 @@ void TaskSerialInterface(void *pvParameters) {
 				sensorID_t sensorID;
 				xQueueReceive(sensorDataQueue, &sensorID, 0);
 				// Sends data header
-				SerialInterface::sendByte(MAGSENSOR_DATA);
+				SerialInterface::sendByte(MAGENCODER_DATA);
 				// Sends sensor id
 				SerialInterface::sendByte(sensorID);
 				// Sends sensor data

@@ -27,9 +27,9 @@ bool IMU::begin(uint8_t sensorPort, BusChain* busChain) {
 	busChain->selectPort(sensorPort);
 	bool ret = imu.begin(i2cAddress, i2cPort);
     if (ret) {
-        imu.setAccelerometerRange(ACCEL_RANGE);
-        imu.setGyroRange(GYRO_RANGE);
-        imu.setFilterBandwidth(FILTER_BAND);
+        imu.setAccelerometerRange(accelRange);
+        imu.setGyroRange(gyroRange);
+        imu.setFilterBandwidth(filterBand);
     }
 	busChain->release();
 
