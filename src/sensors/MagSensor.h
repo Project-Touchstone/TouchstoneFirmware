@@ -32,7 +32,6 @@ class MagSensor {
         portMUX_TYPE* spinlock;
 
     public:
-        static const uint8_t DATA_LENGTH = 12;
         MagSensor();
         bool begin(uint8_t encoderPort, BusChain *busChain);
         void update();
