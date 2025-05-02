@@ -351,6 +351,7 @@ void TaskSerialInterface(void *pvParameters) {
 				//Sends tracker id
 				SerialInterface::sendByte(i);
 				//Sends tracker data
+				SerialInterface::sendInt16(magSensors[i].rawX());
 				SerialInterface::sendInt16(magSensors[i].rawY());
 				SerialInterface::sendInt16(magSensors[i].rawZ());
 			}
