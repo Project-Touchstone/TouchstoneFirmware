@@ -74,7 +74,7 @@ const float servoPowerMultiplier = 1./32767.;
 const uint8_t encoderPorts[NUM_MOTORS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};
 
 // Magnetic tracker ports
-const uint8_t magTrackerPorts[2] = {15, 14};
+const uint8_t magTrackerPorts[2] = {14, 15};
 
 //TwoWire object
 TwoWire I2C = TwoWire(0);
@@ -351,8 +351,9 @@ void TaskSerialInterface(void *pvParameters) {
 				//Sends tracker id
 				SerialInterface::sendByte(i);
 				//Sends tracker data
-				SerialInterface::sendInt16(magSensors[i].rawY());
-				SerialInterface::sendInt16(magSensors[i].rawZ());
+				SerialInterface::sendInt16(magTrackers[i].rawX());
+				SerialInterface::sendInt16(magTrackers[i].rawY());
+				SerialInterface::sendInt16(magTrackers[i].rawZ());
 			}
 			
 			// Notifies master on pwm cycle

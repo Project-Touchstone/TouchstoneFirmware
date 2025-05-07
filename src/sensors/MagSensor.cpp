@@ -14,17 +14,17 @@ MagSensor::MagSensor() {
 }
 
 /// @brief Initializes MagSensor object
-/// @param encoderPort Port number of encoder on BusChain
+/// @param sensorPort Port number of sensor on BusChain
 /// @param busChain BusChain object
 /// @return true (successful), false (error)
-bool MagSensor::begin(uint8_t encoderPort, BusChain* busChain) {
+bool MagSensor::begin(uint8_t sensorPort, BusChain* busChain) {
 	//Initializes communication parameters
-	this->encoderPort = encoderPort;
+	this->sensorPort = sensorPort;
 	this->busChain = busChain;
 	this->i2cPort = busChain->getI2CPort();
 
 	//Selects encoder port and initializes sensor
-	busChain->selectPort(encoderPort);
+	busChain->selectPort(sensorPort);
 	magSensor.begin(*i2cPort);
 	//Sets sensor to master-controlled mode
 	bool ret = magSensor.setAccessMode(magSensor.MASTERCONTROLLEDMODE);
@@ -39,7 +39,7 @@ bool MagSensor::begin(uint8_t encoderPort, BusChain* busChain) {
 
 /// @brief Updates sensor data
 void MagSensor::update() {
-  busChain->selectPort(encoderPort);
+  busChain->selectPort(sensorPort);
   magSensor.updateData();
   busChain->release();
 }

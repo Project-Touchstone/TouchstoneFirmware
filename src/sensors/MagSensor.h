@@ -22,8 +22,8 @@ class MagSensor {
 
         //BusChain object
         BusChain* busChain;
-        //Encoder port on BusChain
-        uint8_t encoderPort;
+        //Sensor port on BusChain
+        uint8_t sensorPort;
 
         //I2C port
         TwoWire *i2cPort;
@@ -33,7 +33,7 @@ class MagSensor {
 
     public:
         MagSensor();
-        bool begin(uint8_t encoderPort, BusChain *busChain);
+        bool begin(uint8_t sensorPort, BusChain *busChain);
         void update();
         float getX();
         float getY();
