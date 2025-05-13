@@ -3,7 +3,6 @@
 uint8_t SerialInterface::header = 0;
 bool SerialInterface::headerFlag = false;
 bool SerialInterface::endFlag = true;
-bool SerialInterface::checkEndFlag = false;
 
 /// @brief Initializes the serial interface
 /// @param baudRate Baud rate of serial communication
@@ -21,12 +20,7 @@ void SerialInterface::update() {
         // Reads one byte of data
         uint8_t byte = Serial.peek();
         
-        if (checkEndFlag && byte == END) {
-            Serial.read();
-            checkEndFlag = false;
-            // Sets end flag
-            endFlag = true;
-        } else if (endFlag) {
+        if (endFlag) {
             // If end of data frame was already reached, starts new data frame
             endFlag = false;
             header = Serial.read();
@@ -38,14 +32,6 @@ void SerialInterface::update() {
 
 bool SerialInterface::headerReady() {
     return headerFlag;
-}
-
-void SerialInterface::checkEnd() {
-    checkEndFlag = true;
-}
-
-bool SerialInterface::isPacketEnded() {
-    return endFlag;
 }
 
 uint8_t SerialInterface::getHeader() {
@@ -84,10 +70,6 @@ void SerialInterface::sendFloat(float data) {
     uint8_t buffer[sizeof(data)];
     memcpy(buffer, &data, sizeof(data));
     sendBytes(buffer, sizeof(data));
-}
-
-void SerialInterface::sendEnd() {
-    SerialInterface::sendByte(END);
 }
 
 uint8_t SerialInterface::readByte() {
