@@ -115,7 +115,7 @@ typedef uint8_t servoID_t;
 QueueHandle_t servoDataQueue;
 
 bool aliveFlag = false;
-bool pwmCycleFlag = false;
+bool nonCriticalFlag = false;
 
 // The setup function runs once when you press reset or power on the board.
 void setup() {
@@ -225,7 +225,7 @@ void TaskPWMCycle(void *pvParameters) {
 		//Notifies non-critical sensor task
 		xTaskNotifyGive(sensorNonCriticalHandle);
 
-		// Updates PWM ranges based on servo powers
+		// Updates meta PWM based on previous servo powers
 		for (uint8_t i = 0; i < NUM_MOTORS; i++) {
 			ServoController::updatePWMCompute(servoChannels[i]);
 		}
@@ -269,7 +269,7 @@ void TaskSensorNonCritical(void *pvParameters) {
 		}
 
 		// Sets flag to notify serial interface
-		pwmCycleFlag = true;
+		nonCriticalFlag = true;
 	}
 }
 
@@ -325,7 +325,7 @@ void TaskSerialInterface(void *pvParameters) {
 					SerialInterface::clearPacket();
 					break;
 			}
-		} else if (aliveFlag && pwmCycleFlag) {
+		} else if (aliveFlag && nonCriticalFlag) {
 			// Sends non-critical sensor data
 			// Sends IMU data
 
@@ -356,11 +356,11 @@ void TaskSerialInterface(void *pvParameters) {
 				SerialInterface::sendInt16(magTrackers[i].rawZ());
 			}
 			
-			// Notifies master on pwm cycle
-			pwmCycleFlag = false;
+			// Notifies master that we are ready for next pwm cycle
+			nonCriticalFlag = false;
 			SerialInterface::sendByte(PWM_CYCLE);
 		} else if (aliveFlag && uxQueueMessagesWaiting(sensorDataQueue) > 0) {
-			// If no header to process, sends sensor data
+			// If no header or non-critical sensor data to process, sends critical sensor data
 		
 			while (uxQueueMessagesWaiting(sensorDataQueue) > 0) {
 				sensorID_t sensorID;
