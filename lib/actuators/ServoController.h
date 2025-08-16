@@ -12,7 +12,7 @@
 #include <math.h>
 
 //Local imports
-#include "../comms/BusChain.h"
+#include "BusChain.h"
 
 #define MAX_SERVOS 15
 #define DEFAULT_ADDRESS 0x40

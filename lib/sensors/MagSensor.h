@@ -13,7 +13,7 @@
 #include <freertos/task.h>
 
 //Local imports
-#include "../comms/BusChain.h"
+#include "BusChain.h"
 
 class MagSensor {
     private:

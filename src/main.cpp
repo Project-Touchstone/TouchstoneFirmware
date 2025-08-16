@@ -3,78 +3,18 @@
 #include <math.h>
 #include <Wire.h>
 
-//Local imports
-#include "comms/BusChain.h"
-#include "comms/SerialInterface.h"
-#include "actuators/ServoController.h"
-#include "sensors/MagSensor.h"
-#include "sensors/IMU.h"
+//Configuration imports
+#include "WindowConfig.h"
+#include "SerialHeaders.h"
 
-// Cores to pin RTOS tasks to
-uint8_t CORE_0 = 0;
-uint8_t CORE_1 = 1;
-
-// I2C pins
-#define I2C_SDA 21
-#define I2C_SCL 22
-
-// BusChain address identifiers
-uint8_t busChainIDs[2] = {0, 1};
-
-// PWM output pin on channel 0 of servo driver used for servo synchronization
-#define interruptPin 4
-
-// Servo driver port
-#define servoDriverPort 3
-
-// IMU port
-#define imuPort 13
-
-// IMU sensor id
-#define imuID 0
-
-// DRIFT motors to configure
-#define NUM_MOTORS 4
-
-//Serial baud rate
-#define SERIAL_BAUD_RATE 460800
-#define I2C_BAUD_RATE 1000000
-
-namespace SerialHeaders {
-	//Headers from master to controller
-
-	//Pings microcontroller
-	#define PING 0x1 // 0 bytes
-	//Servo power update
-	#define SERVO_POWER 0x2 // 3 bytes (1 byte motor id, 2 byte power value from 0 to 1)
-
-	//Headers from controller to master
-
-	//Acknowledges ping      
-	#define PING_ACK 0x1 // 0 bytes
-	//PWM cycle start
-	#define PWM_CYCLE 0x2 // 0 bytes
-	//Sends magnetic encoder data
-	#define MAGENCODER_DATA 0xA0 // 5 bytes (1 byte sensor id, 4 byte Y and Z axes)
-	//Sends magnetic tracker data
-	#define MAGTRACKER_DATA 0xA1 // 7 bytes (1 byte sensor id, 6 byte X, Y and Z axes)
-	//Sends IMU data
-	#define IMU_DATA 0xA2 // 13 bytes (1 byte sensor id, 6 byte 3-axis accel data, 6 byte 3-axis gyro data)                                                                                           
-}
+//Internal library imports
+#include "BusChain.h"
+#include "SerialInterface.h"
+#include "ServoController.h"
+#include "MagSensor.h"
+#include "IMU.h"
 
 using namespace SerialHeaders;
-
-// Servo channels for DRIFT motors
-const uint8_t servoChannels[NUM_MOTORS] = {0, 1, 2, 3};
-
-// Servo power multiplier
-const float servoPowerMultiplier = 1./32767.;
-
-// Encoder ports on BusChain (servo, spool) per DRIFT motor
-const uint8_t encoderPorts[NUM_MOTORS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};
-
-// Magnetic tracker ports
-const uint8_t magTrackerPorts[2] = {14, 15};
 
 //TwoWire object
 TwoWire I2C = TwoWire(0);
@@ -83,7 +23,7 @@ TwoWire I2C = TwoWire(0);
 BusChain busChain;
 
 // Magnetic sensor objects
-MagSensor magSensors[NUM_MOTORS*2];
+MagSensor magSensors[NUM_SERVOS*2];
 
 //Magnetic tracker objects
 MagSensor magTrackers[2];
@@ -140,7 +80,7 @@ void setup() {
 	}
 
 	// Initialize encoders in order of id
-	for (uint8_t i = 0; i < NUM_MOTORS * 2; i++) {
+	for (uint8_t i = 0; i < NUM_SERVOS * 2; i++) {
 		// Finds encoder port for sensor id
 		uint8_t encoderPort = encoderPorts[i / 2][i % 2];
 
@@ -179,11 +119,11 @@ void setup() {
   	}
 
 	// Sets bus parameters
-	I2C.setTimeout(1000);
+	I2C.setTimeout(I2C_TIMEOUT);
 	I2C.setClock(I2C_BAUD_RATE);
 
-	sensorDataQueue = xQueueCreate(NUM_MOTORS*2, sizeof(sensorID_t));
-	servoDataQueue = xQueueCreate(NUM_MOTORS, sizeof(servoID_t));
+	sensorDataQueue = xQueueCreate(NUM_SERVOS*2, sizeof(sensorID_t));
+	servoDataQueue = xQueueCreate(NUM_SERVOS, sizeof(servoID_t));
 
 	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
 	
@@ -226,7 +166,7 @@ void TaskPWMCycle(void *pvParameters) {
 		xTaskNotifyGive(sensorNonCriticalHandle);
 
 		// Updates meta PWM based on previous servo powers
-		for (uint8_t i = 0; i < NUM_MOTORS; i++) {
+		for (uint8_t i = 0; i < NUM_SERVOS; i++) {
 			ServoController::updatePWMCompute(servoChannels[i]);
 		}
 	}
@@ -238,7 +178,7 @@ void TaskSensorCritical(void *pvParameters) {
 		vTaskDelay(1);
 	}
 	for (;;) {
-		for (uint8_t i = 0; i < NUM_MOTORS*2; i++) {
+		for (uint8_t i = 0; i < NUM_SERVOS*2; i++) {
 			// Gets sensor id and updates from I2C
 			sensorID_t sensorID = i;
 			magSensors[sensorID].update();

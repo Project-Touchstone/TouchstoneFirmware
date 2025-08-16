@@ -13,7 +13,7 @@
 #include <math.h>
 
 //Local imports
-#include "../comms/BusChain.h"
+#include "BusChain.h"
 
 class IMU {
     private:
