@@ -14,17 +14,17 @@ void test_serial_begin() {
 }
 
 void test_serial_send_byte() {
-    SerialInterface::sendByte(0xAA);
+    SerialInterface::writeByte(0xAA);
     // No assertion, just check for crash
 }
 
 void test_serial_send_int16() {
-    SerialInterface::sendInt16(12345);
+    SerialInterface::writeInt16(12345);
     // No assertion, just check for crash
 }
 
 void test_serial_send_float() {
-    SerialInterface::sendFloat(3.14f);
+    SerialInterface::writeFloat(3.14f);
     // No assertion, just check for crash
 }
 

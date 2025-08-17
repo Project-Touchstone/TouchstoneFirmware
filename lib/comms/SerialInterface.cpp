@@ -52,24 +52,24 @@ void SerialInterface::flush(int8_t numBytes) {
     }
 }
 
-void SerialInterface::sendByte(uint8_t data) {
+void SerialInterface::writeByte(uint8_t data) {
     Serial.write(data);
 }
 
-void SerialInterface::sendBytes(uint8_t* buffer, uint8_t len) {
+void SerialInterface::writeBytes(uint8_t* buffer, uint8_t len) {
     Serial.write(buffer, len);
 }
 
-void SerialInterface::sendInt16(int16_t data) {
+void SerialInterface::writeInt16(int16_t data) {
     uint8_t buffer[sizeof(data)];
     memcpy(buffer, &data, sizeof(data));
-    sendBytes(buffer, sizeof(data));
+    writeBytes(buffer, sizeof(data));
 }
 
-void SerialInterface::sendFloat(float data) {
+void SerialInterface::writeFloat(float data) {
     uint8_t buffer[sizeof(data)];
     memcpy(buffer, &data, sizeof(data));
-    sendBytes(buffer, sizeof(data));
+    writeBytes(buffer, sizeof(data));
 }
 
 uint8_t SerialInterface::readByte() {

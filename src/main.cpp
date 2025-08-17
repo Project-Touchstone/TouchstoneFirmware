@@ -253,7 +253,7 @@ void TaskSerialInterface(void *pvParameters) {
 					aliveFlag = true;
 					digitalWrite(LED_BUILTIN, HIGH);
 					// Sends ping acknowledgement
-					SerialInterface::sendByte(PING_ACK);
+					SerialInterface::writeByte(PING_ACK);
 					SerialInterface::clearPacket();
 					break;
 				case SERVO_POWER:
@@ -285,35 +285,35 @@ void TaskSerialInterface(void *pvParameters) {
 			// Sends IMU data
 
 			// Data header
-			SerialInterface::sendByte(IMU_DATA);
+			SerialInterface::writeByte(IMU_DATA);
 			//Sends imu id
-			SerialInterface::sendByte(imuID);
+			SerialInterface::writeByte(imuID);
 			//Sends imu data
 			int16_t x, y, z;
 			imu.getRawAccel(&x, &y, &z);
-			SerialInterface::sendInt16(x);
-			SerialInterface::sendInt16(y);
-			SerialInterface::sendInt16(z);
+			SerialInterface::writeInt16(x);
+			SerialInterface::writeInt16(y);
+			SerialInterface::writeInt16(z);
 			imu.getRawGyro(&x, &y, &z);
-			SerialInterface::sendInt16(x);
-			SerialInterface::sendInt16(y);
-			SerialInterface::sendInt16(z);
+			SerialInterface::writeInt16(x);
+			SerialInterface::writeInt16(y);
+			SerialInterface::writeInt16(z);
 
 			// Sends magnetic tracker data
 			for (uint8_t i = 0; i < 2; i++) {
 				// Data header
-				SerialInterface::sendByte(MAGTRACKER_DATA);
+				SerialInterface::writeByte(MAGTRACKER_DATA);
 				//Sends tracker id
-				SerialInterface::sendByte(i);
+				SerialInterface::writeByte(i);
 				//Sends tracker data
-				SerialInterface::sendInt16(magTrackers[i].rawX());
-				SerialInterface::sendInt16(magTrackers[i].rawY());
-				SerialInterface::sendInt16(magTrackers[i].rawZ());
+				SerialInterface::writeInt16(magTrackers[i].rawX());
+				SerialInterface::writeInt16(magTrackers[i].rawY());
+				SerialInterface::writeInt16(magTrackers[i].rawZ());
 			}
 			
 			// Notifies master that we are ready for next pwm cycle
 			nonCriticalFlag = false;
-			SerialInterface::sendByte(PWM_CYCLE);
+			SerialInterface::writeByte(PWM_CYCLE);
 		} else if (aliveFlag && uxQueueMessagesWaiting(sensorDataQueue) > 0) {
 			// If no header or non-critical sensor data to process, sends critical sensor data
 		
@@ -321,12 +321,12 @@ void TaskSerialInterface(void *pvParameters) {
 				sensorID_t sensorID;
 				xQueueReceive(sensorDataQueue, &sensorID, 0);
 				// Sends data header
-				SerialInterface::sendByte(MAGENCODER_DATA);
+				SerialInterface::writeByte(MAGENCODER_DATA);
 				// Sends sensor id
-				SerialInterface::sendByte(sensorID);
+				SerialInterface::writeByte(sensorID);
 				// Sends sensor data
-				SerialInterface::sendInt16(magSensors[sensorID].rawY());
-				SerialInterface::sendInt16(magSensors[sensorID].rawZ());
+				SerialInterface::writeInt16(magSensors[sensorID].rawY());
+				SerialInterface::writeInt16(magSensors[sensorID].rawZ());
 			}
 		}
 	}

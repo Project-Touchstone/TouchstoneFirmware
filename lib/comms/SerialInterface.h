@@ -25,15 +25,15 @@ class SerialInterface {
         static uint8_t getHeader();
 
         // Sends a byte of data
-        static void sendByte(uint8_t data);
+        static void writeByte(uint8_t data);
 
-        static void sendBytes(uint8_t* buffer, uint8_t len);
+        static void writeBytes(uint8_t* buffer, uint8_t len);
 
         // Sends an integer
-        static void sendInt16(int16_t data);
+        static void writeInt16(int16_t data);
 
         // Sends a 32-bit float
-        static void sendFloat(float data);
+        static void writeFloat(float data);
 
         // Reads a byte of data
         static uint8_t readByte();
