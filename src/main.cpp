@@ -1,3 +1,18 @@
+//////////////////////////////////////////////////////////////
+// Note: uncomment the following line to enable integration testing
+// This will include an hpp file for testing purposes
+// Be sure to comment out this line for production builds
+//////////////////////////////////////////////////////////////
+//#define INTEGRATION_TESTING
+
+#ifdef INTEGRATION_TESTING
+#include "../integration/blink.hpp" // Testing file to run
+#endif
+//////////////////////////////////////////////////////////////
+
+#ifndef INTEGRATION_TESTING
+#define INTEGRATION_TESTING
+
 //External imports
 #include <Arduino.h>
 #include <math.h>
@@ -320,3 +335,5 @@ void TaskSerialInterface(void *pvParameters) {
 void loop() {
   	// Empty loop
 }
+
+#endif // INTEGRATION_TESTING

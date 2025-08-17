@@ -1,3 +1,6 @@
+#ifndef I2C_SCANNER_TEST_HPP
+#define I2C_SCANNER_TEST_HPP
+
 // SPDX-FileCopyrightText: 2023 Carter Nelson for Adafruit Industries
 //
 // SPDX-License-Identifier: MIT
@@ -62,3 +65,5 @@ void loop() {
 
   delay(5000);           // wait 5 seconds for next scan
 }
+
+#endif

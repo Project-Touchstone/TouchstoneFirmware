@@ -1,3 +1,6 @@
+#ifndef BUSCHAIN_MAGSENSOR_TEST2_HPP
+#define BUSCHAIN_MAGSENSOR_TEST2_HPP
+
 #include <Tlv493d.h>
 #include <BusChain.h>
 
@@ -43,3 +46,5 @@ void loop() {
   Serial.println(magSensor.getZ());
   //Serial.println(micros()-cycleStart);
 }
+
+#endif

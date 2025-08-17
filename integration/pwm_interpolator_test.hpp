@@ -1,3 +1,6 @@
+#ifndef PWM_INTERPOLATOR_TEST_HPP
+#define PWM_INTERPOLATOR_TEST_HPP
+
 #include <ESP32Servo.h>
 
 //Servo pin
@@ -53,3 +56,5 @@ void loop() {
     delay(100);
   }
 }
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef SERVO_TEST_HPP
+#define SERVO_TEST_HPP
+
 #include <ESP32Servo.h>
 
 //Servo pin
@@ -17,3 +20,5 @@ void loop() {
   Serial.println(val);
   servo.write(val);*/
 }
+
+#endif

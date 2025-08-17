@@ -1,3 +1,6 @@
+#ifndef SERVO_CONTROL_TEST_HPP
+#define SERVO_CONTROL_TEST_HPP
+
 #include <Touchstone.h>
 #include <ModulatedServo.h>
 #include <PID.h>
@@ -84,3 +87,5 @@ void loop() {
   driveServo(pid.update(encoder.relativePosition() - encoderTarget));
   Serial.println(encoder.relativePosition());
 }
+
+#endif

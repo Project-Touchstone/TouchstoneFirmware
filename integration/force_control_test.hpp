@@ -1,3 +1,6 @@
+#ifndef FORCE_CONTROL_TEST_HPP
+#define FORCE_CONTROL_TEST_HPP
+
 #include <MagEncoder.h>
 #include <BusChain.h>
 #include <math.h>
@@ -120,3 +123,5 @@ void loop() {
   driveServo(pid(separation - separationTarget));
   //Serial.println(separation);
 }
+
+#endif

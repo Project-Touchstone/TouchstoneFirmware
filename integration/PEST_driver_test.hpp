@@ -1,3 +1,6 @@
+#ifndef PEST_DRIVER_TEST_HPP
+#define PEST_DRIVER_TEST_HPP
+
 #import "Button.h"
 #import <math.h>
 
@@ -179,3 +182,5 @@ void loop() {
   updateData();
   trigger.update();
 }
+
+#endif

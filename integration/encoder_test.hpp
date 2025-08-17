@@ -1,3 +1,6 @@
+#ifndef ENCODER_TEST_HPP
+#define ENCODER_TEST_HPP
+
 #include <MagEncoder.h>
 #include <BusChain.h>
 #include <math.h>
@@ -48,3 +51,5 @@ void loop() {
   encoder.update();
   Serial.println(encoder.relativePosition());
 }
+
+#endif

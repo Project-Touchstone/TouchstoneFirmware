@@ -1,3 +1,6 @@
+#ifndef SERVO_DRIVER_TEST_HPP
+#define SERVO_DRIVER_TEST_HPP
+
 #include <ServoController.h>
 #include <BusChain.h>
 #include <math.h>
@@ -31,3 +34,5 @@ void loop() {
     delay(100);
   }
 }
+
+#endif

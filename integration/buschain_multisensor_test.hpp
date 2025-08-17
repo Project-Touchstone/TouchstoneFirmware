@@ -1,13 +1,20 @@
+#ifndef BUSCHAIN_MULTISENSOR_TEST_HPP
+#define BUSCHAIN_MULTISENSOR_TEST_HPP
+
 //#include <Button.h>
 #include <Wire.h>
 #include <math.h>
+#include <Tlv493d.h>
 #include "FastIMU.h"
 
 #define SER 3
 #define CLK 4
 #define RCLK 5
 
-#define targetPort 6
+#define magPort 7
+Tlv493d magSensor = Tlv493d();
+
+#define imuPort 6
 #define IMU_ADDRESS 0x68    //Change to the address of the IMU
 #define PERFORM_CALIBRATION //Comment to disable startup calibration
 MPU6050 IMU;               //Change to the name of any supported IMU! 
@@ -114,9 +121,21 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
 
-  int err = selectPort(targetPort);
+  int err = selectPort(magPort);
   if (err != 0) {
-    Serial.print("Error selecting I2C port: ");
+    Serial.print("Error selecting magnetic sensor port: ");
+    Serial.println(err);
+    while (true) {
+      ;
+    }
+  }
+
+  magSensor.begin();
+  Serial.println("3D Magnetic Sensor Test");
+
+  err = selectPort(imuPort);
+  if (err != 0) {
+    Serial.print("Error selecting imu port: ");
     Serial.println(err);
     while (true) {
       ;
@@ -131,7 +150,7 @@ void setup() {
       ;
     }
   }
-  
+
   #ifdef PERFORM_CALIBRATION
     Serial.println("FastIMU calibration & data example");
     if (IMU.hasMagnetometer()) {
@@ -193,6 +212,23 @@ void setup() {
 }
 
 void loop() {
+  selectPort(magPort);
+
+  magSensor.updateData();
+  delay(100);
+
+  Serial.print("X = ");
+  Serial.print(magSensor.getX());
+  Serial.print(" mT; Y = ");
+  Serial.print(magSensor.getY());
+  Serial.print(" mT; Z = ");
+  Serial.print(magSensor.getZ());
+  Serial.print(" mT; Temp = ");
+  Serial.print(magSensor.getTemp());
+  Serial.println(" C");
+   
+  selectPort(imuPort);
+
   IMU.update();
   IMU.getAccel(&accelData);
   Serial.print(accelData.accelX);
@@ -220,5 +256,9 @@ void loop() {
 	  Serial.print("\t");
 	  Serial.println(IMU.getTemp());
   }
-  delay(50);
+
+  delay(500);
 }
+
+#endif
+
