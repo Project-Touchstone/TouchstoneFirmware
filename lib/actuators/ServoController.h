@@ -61,7 +61,7 @@ class ServoController {
     public:
         static bool begin(uint8_t driverPort, BusChain* busChain);
         static void reset();
-        static void setPower(uint8_t channel, float power);
+        static void setSignal(uint8_t channel, float power);
         static void updatePWMTime();
 		static void updatePWMCompute(uint8_t channel);
         static void updatePWMDriver(uint8_t channel);

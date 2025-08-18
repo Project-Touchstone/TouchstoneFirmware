@@ -24,7 +24,7 @@ uint8_t CORE_1 = 1;
 // IMU sensor id
 #define imuID 0
 
-// DRIFT motors to configure
+// Servos to configure
 #define NUM_SERVOS 4
 
 //Serial parameters
@@ -37,11 +37,11 @@ uint8_t CORE_1 = 1;
 // BusChain address identifiers
 uint8_t busChainIDs[2] = {0, 1};
 
-// Servo channels for DRIFT motors
+// Servo channels
 const uint8_t servoChannels[NUM_SERVOS] = {0, 1, 2, 3};
 
 // Servo power multiplier
-const float servoPowerMultiplier = 1./32767.;
+const float servoSignalMultiplier = 1./32767.;
 
 // Encoder ports on BusChain (servo, spool) per DRIFT motor
 const uint8_t encoderPorts[NUM_SERVOS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};

@@ -64,10 +64,10 @@ void ServoController::reset() {
 	taskEXIT_CRITICAL(&spinlock);
 }
 
-/// @brief Sets power of servo
+/// @brief Sets signal of servo
 /// @param channel Servo channel number
-/// @param power Power value (-1 to 1)
-void ServoController::setPower(uint8_t channel, float power) {
+/// @param power Signal value (-1 to 1)
+void ServoController::setSignal(uint8_t channel, float power) {
 	// Clamps power to range
 	if (power > 1) {
 		power = 1;

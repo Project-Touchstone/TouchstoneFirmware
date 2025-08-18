@@ -30,7 +30,7 @@ void setup() {
 
 void loop() {
   for (float i = -1; i < 1; i+=0.001) {
-    ServoController::setPower(servoChannel, i);
+    ServoController::setSignal(servoChannel, i);
     delay(100);
   }
 }

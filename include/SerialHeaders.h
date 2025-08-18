@@ -7,7 +7,7 @@ namespace SerialHeaders {
 	//Pings microcontroller
 	#define PING 0x1 // 0 bytes
 	//Servo power update
-	#define SERVO_POWER 0x2 // 3 bytes (1 byte motor id, 2 byte power value from 0 to 1)
+	#define SERVO_SIGNAL 0x2 // 3 bytes (1 byte motor id, 2 byte signal value from -1 to 1)
 
 	//Headers from controller to master
 

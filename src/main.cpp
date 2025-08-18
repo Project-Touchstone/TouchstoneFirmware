@@ -256,18 +256,18 @@ void TaskSerialInterface(void *pvParameters) {
 					SerialInterface::writeByte(PING_ACK);
 					SerialInterface::clearPacket();
 					break;
-				case SERVO_POWER:
+				case SERVO_SIGNAL:
 					// Updates servo controller
 					if (Serial.available() >= 3) {
-						// Reads servo id and power
+						// Reads servo id and signal
 						uint8_t servoID = SerialInterface::readByte();
 						int16_t val = SerialInterface::readData<int16_t>();
-						float power = static_cast<float>(val)*servoPowerMultiplier;
+						float signal = static_cast<float>(val)*servoSignalMultiplier;
 						
-						//Ensures servo ID and power are within ranges
-						if ((servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) && (abs(power) <= 1)) {
+						//Ensures servo ID and signal are within ranges
+						if ((servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) && (abs(signal) <= 1)) {
 							// Sets servo power
-							ServoController::setPower(servoChannels[servoID], power);
+							ServoController::setSignal(servoChannels[servoID], signal);
 						}
 						// Adds servo to queue
 						xQueueSend(servoDataQueue, &servoID, 0);

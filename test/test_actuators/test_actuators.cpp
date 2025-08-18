@@ -31,13 +31,13 @@ void test_servo_set_power() {
     test_servo_begin();
     // Loops through servos in configuration and tests forward, backward, and stopping one at a time
     for (uint8_t i = 0; i < NUM_SERVOS; i++) {
-        ServoController::setPower(servoChannels[i], 0.1f);
+        ServoController::setSignal(servoChannels[i], 0.1f);
         ServoController::updatePWMDriver(servoChannels[i]);
         delay(1000);
-        ServoController::setPower(servoChannels[i], -0.1f);
+        ServoController::setSignal(servoChannels[i], -0.1f);
         ServoController::updatePWMDriver(servoChannels[i]);
         delay(1000);
-        ServoController::setPower(servoChannels[i], 0.0f);
+        ServoController::setSignal(servoChannels[i], 0.0f);
         ServoController::updatePWMDriver(servoChannels[i]);
         delay(1000);
     }
