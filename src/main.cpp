@@ -150,7 +150,7 @@ void setup() {
 		// Finds tracker channel for sensor id
 		uint8_t trackerChannel = magTrackerChannels[i];
 
-		// Attempts to connect through associated port and buschain
+		// Attempts to connect through associated channel and buschain
 		if (!magTrackers[i].begin(trackerChannel, &busChain)) {
 			Serial.print("Error connecting to magnetic tracker channel: ");
 			Serial.println(trackerChannel);

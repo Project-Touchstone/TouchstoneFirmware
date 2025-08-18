@@ -13,14 +13,14 @@ void BusChain::begin(uint8_t moduleId) {
 }
 
 /// @brief Initializes BusChain configuration with specified bus
-/// @param busIds addresses of multiplexing modules in chain
-/// @param i2cPort specific port to use for I2C communication
+/// @param moduleIds addresses of multiplexing modules in chain
+/// @param i2cBus specific bus to use for I2C communication
 void BusChain::begin(uint8_t* moduleIds, TwoWire* i2cBus) {
 	//Initializes I2C bus
 	i2cBus->begin();
 	//Initializes bus access mutex
 	mutex = xSemaphoreCreateMutex();
-	//Initializes busIds and i2c port
+	//Initializes moduleIds and i2c bus
 	this->moduleIds = moduleIds;
 	this->i2cBus = i2cBus;
 }
@@ -40,7 +40,7 @@ uint8_t BusChain::selectChannel(uint8_t channel) {
 	}
 	//Updates last module opened
 	lastModule = currModule;
-	//Opens channel to current sensor group at the right port
+	//Opens channel to current sensor group at the right channel
 	i2cBus->beginTransmission(ROOT_ADDRESS + currModule);
 	i2cBus->write(1 << channel%8);
 	return i2cBus->endTransmission();
