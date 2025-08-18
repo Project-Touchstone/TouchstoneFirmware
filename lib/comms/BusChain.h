@@ -16,20 +16,20 @@
 class BusChain {
     private:
         // I2C bus
-        TwoWire* i2cPort;
+        TwoWire* i2cBus;
         // Address identifiers of all modules in chain
-        uint8_t* busIds;
-        //Last I2C multiplexer group opened
-        int8_t lastGroup = -1;
+        uint8_t* moduleIds;
+        //Last I2C multiplexer module opened
+        int8_t lastModule = -1;
 
         //Mutex for I2C bus access
         SemaphoreHandle_t mutex;
         
     public:
-        void begin(uint8_t busId);
-        void begin(uint8_t* busIds, TwoWire* i2cPort);
-        uint8_t selectPort(uint8_t port);
-        TwoWire* getI2CPort();
+        void begin(uint8_t moduleId);
+        void begin(uint8_t* moduleIds, TwoWire* i2cBus);
+        uint8_t selectChannel(uint8_t channel);
+        TwoWire* getI2CBus();
         void release();
 };
 

@@ -3,7 +3,7 @@
 // AS5600 default I2C address is 0x36
 
 MagEncoder::MagEncoder()
-    : i2cPort(nullptr), sensorPort(0), busChain(nullptr), busChainEnable(false), lastRawAngle(0) {}
+    : i2cPort(nullptr), sensorChannel(0), busChain(nullptr), busChainEnable(false), lastRawAngle(0) {}
 
 bool MagEncoder::begin(TwoWire* wire) {
     i2cPort = wire;
@@ -12,24 +12,24 @@ bool MagEncoder::begin(TwoWire* wire) {
     return as5600.isConnected();
 }
 
-bool MagEncoder::begin(uint8_t sensorPort, BusChain* busChain) {
-    this->sensorPort = sensorPort;
+bool MagEncoder::begin(uint8_t sensorChannel, BusChain* busChain) {
+    this->sensorChannel = sensorChannel;
     this->busChain = busChain;
 
     // Ensures busChain is used
     busChainEnable = true;
 
-    // Selects sensor port and initializes sensor settings
-    busChain->selectPort(sensorPort);
-    bool ret = begin(busChain->getI2CPort());
+    // Selects sensor channel and initializes sensor settings
+    busChain->selectChannel(sensorChannel);
+    bool ret = begin(busChain->getI2CBus());
     busChain->release();
     return ret;
 }
 
 void MagEncoder::update() {
-    // If using BusChain, select the port before reading
+    // If using BusChain, select the channel before reading
     if (busChainEnable) {
-        busChain->selectPort(sensorPort);
+        busChain->selectChannel(sensorChannel);
     }
     lastRawAngle = as5600.readAngle();
     // Release the BusChain after reading

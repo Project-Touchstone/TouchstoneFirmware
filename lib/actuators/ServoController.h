@@ -22,7 +22,7 @@ class ServoController {
         // PWM driver object
         static Adafruit_PWMServoDriver pwmDriver;
         // Port number of servo driver on BusChain
-        static uint8_t driverPort;
+        static uint8_t driverChannel;
         // BusChain object
         static BusChain* busChain;
         // PWM frequency

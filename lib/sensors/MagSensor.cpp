@@ -15,30 +15,30 @@ MagSensor::MagSensor() {
 }
 
 /// @brief Initializes MagSensor object using BusChain
-/// @param sensorPort Port number of sensor on BusChain
+/// @param sensorChannel Channel number of sensor on BusChain
 /// @param busChain BusChain object
 /// @return true (successful), false (error)
-bool MagSensor::begin(uint8_t sensorPort, BusChain* busChain) {
-	this->sensorPort = sensorPort;
+bool MagSensor::begin(uint8_t sensorChannel, BusChain* busChain) {
+	this->sensorChannel = sensorChannel;
 	this->busChain = busChain;
 
     // Ensures busChain is enabled
     busChainEnable = true;
 
-	//Selects encoder port and initializes sensor
-	busChain->selectPort(sensorPort);
-	bool ret = begin(busChain->getI2CPort());
+	//Selects sensor channel and initializes sensor
+	busChain->selectChannel(sensorChannel);
+	bool ret = begin(busChain->getI2CBus());
     busChain->release();
 
 	return ret;
 }
 
 /// @brief Initializes MagSensor object using direct I2C
-/// @param wire I2C port
+/// @param wire I2C bus
 /// @return true (successful), false (error)
 bool MagSensor::begin(TwoWire* wire) {
-	this->i2cPort = wire;
-	magSensor.begin(*i2cPort);
+	this->i2cBus = wire;
+	magSensor.begin(*i2cBus);
 	bool ret = magSensor.setAccessMode(magSensor.MASTERCONTROLLEDMODE);
 	magSensor.disableTemp();
 	return !ret;
@@ -46,9 +46,9 @@ bool MagSensor::begin(TwoWire* wire) {
 
 /// @brief Updates sensor data
 void MagSensor::update() {
-    // If using BusChain, select the port before reading
+    // If using BusChain, select the channel before reading
 	if (busChainEnable) {
-		busChain->selectPort(sensorPort);
+		busChain->selectChannel(sensorChannel);
 	}
 	magSensor.updateData();
     // Release the BusChain after reading

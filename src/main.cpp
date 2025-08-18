@@ -93,6 +93,12 @@ void setup() {
 	I2CBuses[0].begin(I2C0_SDA, I2C0_SCL);
 	I2CBuses[1].begin(I2C1_SDA, I2C1_SCL);
 
+	// Sets bus parameters
+	for (uint8_t i = 0; i < 2; i++) {
+		I2CBuses[i].setTimeout(I2C_TIMEOUT);
+		I2CBuses[i].setClock(I2C_BAUD_RATE);
+	}
+
 	//Initializes buschain object
 	#ifdef BUSCHAIN_ENABLE
 	busChain.begin(busChainIDs, &I2CBuses[BUSCHAIN_WIRE_BUS]);
@@ -123,33 +129,37 @@ void setup() {
 		}
   	}
 
-	// Initializes IMU object
-	imu.setParameters(MPU6050_RANGE_2_G, MPU6050_RANGE_250_DEG, MPU6050_BAND_260_HZ);
-	if (!imu.begin(imuPort, &busChain)) {
-		Serial.println("Error connecting to IMU");
-		while (true) {
-			
+	// Initializes IMU objects
+	#ifdef IMU_ENABLE
+	for (uint8_t i = 0; i < NUM_IMU; i++) {
+		uint8_t imuChannel = imuChannels[i];
+		imus[i].setParameters(IMU_ACCEL_RANGE, IMU_GYRO_RANGE, IMU_FILTER_BAND);
+		if (!imus[i].begin(imuChannel, &busChain)) {
+			Serial.print("Error connecting to IMU on channel: ");
+			Serial.println(imuChannel);
+			while (true) {
+				
+			}
 		}
 	}
+	#endif
 
 	// Initializes magnetic trackers
-	for (uint8_t i = 0; i < 2; i++) {
-		// Finds tracker port for sensor id
-		uint8_t trackerPort = magTrackerPorts[i];
+	#ifdef MAG_TRACKER_ENABLE
+	for (uint8_t i = 0; i < NUM_MAG_TRACKERS; i++) {
+		// Finds tracker channel for sensor id
+		uint8_t trackerChannel = magTrackerChannels[i];
 
 		// Attempts to connect through associated port and buschain
-		if (!magTrackers[i].begin(trackerPort, &busChain)) {
-			Serial.print("Error connecting to magnetic tracker port: ");
-			Serial.println(trackerPort);
+		if (!magTrackers[i].begin(trackerChannel, &busChain)) {
+			Serial.print("Error connecting to magnetic tracker channel: ");
+			Serial.println(trackerChannel);
 			while (true) {
 				
 			}
 		}
   	}
-
-	// Sets bus parameters
-	I2C.setTimeout(I2C_TIMEOUT);
-	I2C.setClock(I2C_BAUD_RATE);
+	#endif
 
 	sensorDataQueue = xQueueCreate(NUM_SERVOS*2, sizeof(sensorID_t));
 	servoDataQueue = xQueueCreate(NUM_SERVOS, sizeof(servoID_t));

@@ -16,15 +16,18 @@ TwoWire I2C = TwoWire(0);
 BusChain busChain;
 
 void setUp() {
-    // Initialize I2C port
-	I2C.begin(I2C_SDA, I2C_SCL);
+    // Initialize I2C bus
+	I2C.begin(I2C0_SDA, I2C0_SCL);
 
 	//Initializes buschain object
+    #ifdef BUSCHAIN_ENABLE
 	busChain.begin(busChainIDs, &I2C);
+    #endif
 }
 
+#ifdef SERVO_ENABLE
 void test_servo_begin() {
-    TEST_ASSERT_MESSAGE(ServoController::begin(servoDriverPort, &busChain), ("Servo controller begin failed on port " + String(servoDriverPort)).c_str());
+    TEST_ASSERT_MESSAGE(ServoController::begin(servoDriverChannel, &busChain), ("Servo controller begin failed on channel " + String(servoDriverPort)).c_str());
 }
 
 void test_servo_set_power() {
@@ -43,11 +46,14 @@ void test_servo_set_power() {
     }
     // No assertion, just check whether each servo turns on
 }
+#endif
 
 void setup() {
     UNITY_BEGIN();
+    #ifdef SERVO_ENABLE
     RUN_TEST(test_servo_begin);
     RUN_TEST(test_servo_set_power);
+    #endif
     UNITY_END();
 }
 

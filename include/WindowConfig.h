@@ -38,7 +38,7 @@ uint8_t CORE_1 = 1;
 // BusChain Wire bus
 #define BUSCHAIN_WIRE_BUS 0
 
-// BusChain address identifiers (in order of port chain)
+// BusChain address identifiers (in order of chain)
 //uint8_t busChainIDs[2] = {0, 1};
 
 ////////////////////////////////////////////////////////////////////
@@ -53,8 +53,8 @@ uint8_t CORE_1 = 1;
 // PWM output pin on channel 0 of servo driver used for servo synchronization
 #define interruptPin 4
 
-// Servo driver port
-#define servoDriverPort 3
+// Servo driver channel on BuChain
+#define servoDriverChannel 3
 
 // Servo channels
 const uint8_t servoChannels[NUM_SERVOS] = {0, 1, 2, 3};
@@ -98,8 +98,12 @@ const uint8_t focCurrentPins[NUM_FOC_MOTORS][2] =
 
 /*#define NUM_IMU 1
 
-// IMU buschain ports
-const uint8_t imuPorts[NUM_IMU] = {13};*/
+#define IMU_ACCEL_RANGE MPU6050_RANGE_2_G
+#define IMU_GYRO_RANGE MPU6050_RANGE_250_DEG
+#define IMU_FILTER_BAND MPU6050_BAND_260_HZ
+
+// IMU buschain channels
+const uint8_t imuChannels[NUM_IMU] = {13};*/
 
 ///////////////////////////////////////////////////////////////////
 // Magnetic encoder configuration
@@ -120,8 +124,8 @@ const uint8_t magEncoderBuses[NUM_MAG_ENCODERS] = {0, 1};
 //#define MAG_TRACKER_ENABLE
 
 /*#define NUM_MAG_TRACKERS 2
-// Magnetic tracker ports on BusChain
-const uint8_t magTrackerPorts[2] = {14, 15};*/
+// Magnetic tracker channels on BusChain
+const uint8_t magTrackerChannels[2] = {14, 15};*/
 
 
 #endif // WINDOW_CONFIGURATION_H

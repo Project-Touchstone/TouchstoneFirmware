@@ -22,11 +22,11 @@ class MagSensor {
 
         //BusChain object
         BusChain* busChain;
-        //Sensor port on BusChain
-        uint8_t sensorPort;
+        //Sensor channel on BusChain
+        uint8_t sensorChannel;
 
-        //I2C port
-        TwoWire *i2cPort;
+        //I2C bus
+        TwoWire *i2cBus;
 
         //Spinlock for RTOS
         portMUX_TYPE* spinlock;

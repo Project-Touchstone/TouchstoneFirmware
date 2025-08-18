@@ -7,7 +7,7 @@
 
 Adafruit_PWMServoDriver ServoController::pwmDriver;;
 BusChain* ServoController::busChain;
-uint8_t ServoController::driverPort;
+uint8_t ServoController::driverChannel;
 const uint16_t ServoController::pwmFreq = 50;
 const uint32_t ServoController::oscillatorFreq = 28300000;
 const uint16_t ServoController::rangeCenter = 308;
@@ -27,22 +27,22 @@ uint16_t ServoController::commsDelay = 100;
 portMUX_TYPE ServoController::spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 /// @brief Initializes ServoController object
-/// @param driverPort Port number of servo driver on BusChain
+/// @param driverChannel Channel number of servo driver on BusChain
 /// @param busChain BusChain object
 /// @return true (successful), false (error)
-bool ServoController::begin(uint8_t driverPort, BusChain* busChain) {
+bool ServoController::begin(uint8_t driverChannel, BusChain* busChain) {
 	// Initializes communication parameters
-	ServoController::driverPort = driverPort;
+	ServoController::driverChannel = driverChannel;
 	ServoController::busChain = busChain;
 
 	// Initializes servo driver
-	busChain->selectPort(driverPort);
-	TwoWire* i2cPort = busChain->getI2CPort();
+	busChain->selectChannel(driverChannel);
+	TwoWire* i2cPort = busChain->getI2CBus();
 	pwmDriver = Adafruit_PWMServoDriver(DEFAULT_ADDRESS, *i2cPort);
 	bool ret = pwmDriver.begin();
 	pwmDriver.setOscillatorFrequency(oscillatorFreq);
 	pwmDriver.setPWMFreq(pwmFreq);
-	// Uses first port to trigger interrupt
+	// Uses first channel to trigger interrupt
 	pwmDriver.setPWM(0, 0, 100);
 	busChain->release();
 
@@ -137,7 +137,7 @@ void ServoController::updatePWMCompute(uint8_t channel) {
 /// @brief Updates PWM driver with new PWM ranges
 void ServoController::updatePWMDriver(uint8_t channel) {
 	if (pwmStarts[channel] > -1) {
-		busChain->selectPort(driverPort);
+		busChain->selectChannel(driverChannel);
 		pwmDriver.setPWM(channel + 1, pwmStarts[channel], pwmEnds[channel]);
 		busChain->release();
 	}

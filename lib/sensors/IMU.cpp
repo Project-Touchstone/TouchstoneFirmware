@@ -15,30 +15,30 @@ IMU::IMU() {
 }
 
 /// @brief Initializes imu object using BusChain
-/// @param sensorPort Port number of sensor on BusChain
+/// @param sensorChannel Channel number of sensor on BusChain
 /// @param busChain BusChain object
 /// @return true (successful), false (error)
-bool IMU::begin(uint8_t sensorPort, BusChain* busChain) {
-	this->sensorPort = sensorPort;
+bool IMU::begin(uint8_t sensorChannel, BusChain* busChain) {
+	this->sensorChannel = sensorChannel;
 	this->busChain = busChain;
 
     // Ensures busChain is used
 	busChainEnable = true;
 
-	busChain->selectPort(sensorPort);
-	bool ret = begin(busChain->getI2CPort());
+	busChain->selectChannel(sensorChannel);
+	bool ret = begin(busChain->getI2CBus());
 	busChain->release();
 
 	return ret;
 }
 
 /// @brief Initializes imu object using direct I2C
-/// @param wire I2C port
+/// @param wire I2C bus
 /// @return true (successful), false (error)
 bool IMU::begin(TwoWire* wire) {
-	this->i2cPort = wire;
+	this->i2cBus = wire;
 	
-	bool ret = imu.begin(i2cAddress, i2cPort);
+	bool ret = imu.begin(i2cAddress, i2cBus);
     if (ret) {
         imu.setAccelerometerRange(accelRange);
         imu.setGyroRange(gyroRange);
@@ -55,9 +55,9 @@ void IMU::setParameters(mpu6050_accel_range_t accelRange, mpu6050_gyro_range_t g
 
 /// @brief Updates sensor data
 void IMU::update() {
-    // If using BusChain, select the port before reading
+    // If using BusChain, select the channel before reading
   if (busChainEnable) {
-    busChain->selectPort(sensorPort);
+    busChain->selectChannel(sensorChannel);
   }
   imu.getEvent(&a, &g, &temp);
   // Release the BusChain after reading

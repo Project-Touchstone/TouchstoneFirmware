@@ -68,7 +68,7 @@ void setup() {
   
   BusChain::begin(SER, CLK, RCLK, 1);
   for (uint8_t i = 0; i < 2; i++) {
-    uint8_t err = BusChain::selectPort(encoderPorts[i]);
+    uint8_t err = BusChain::selectChannel(encoderPorts[i]);
     if (err != 0) {
       Serial.print("Error selecting I2C port: ");
       Serial.println(encoderPorts[i]);
@@ -95,12 +95,12 @@ void setup() {
   while (millis() - timeStart < 2000) {
     if (millis() - timeStart < 1000) {
       for (uint8_t i = 0; i < 2; i++) {
-        BusChain::selectPort(encoderPorts[i]);
+        BusChain::selectChannel(encoderPorts[i]);
         encoders[i].calibrate();
       }
     } else {
       for (uint8_t i = 0; i < 2; i++) {
-        BusChain::selectPort(encoderPorts[i]);
+        BusChain::selectChannel(encoderPorts[i]);
         encoders[i].update();
       }
     }
@@ -108,7 +108,7 @@ void setup() {
   driveServo(0);
   delay(500);
   for (uint8_t i = 0; i < 2; i++) {
-    BusChain::selectPort(encoderPorts[i]);
+    BusChain::selectChannel(encoderPorts[i]);
     encoders[i].reset();
   }
   timeStart = 0;
@@ -116,7 +116,7 @@ void setup() {
 
 void loop() {
   for (uint8_t i = 0; i < 2; i++) {
-    BusChain::selectPort(encoderPorts[i]);
+    BusChain::selectChannel(encoderPorts[i]);
     encoders[i].update();
   }
   float separation = encoders[0].relativePosition() - encoders[1].relativePosition();

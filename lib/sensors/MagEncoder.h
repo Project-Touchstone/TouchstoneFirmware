@@ -19,7 +19,7 @@ public:
 private:
     AS5600 as5600;
     TwoWire* i2cPort;
-    uint8_t sensorPort;
+    uint8_t sensorChannel;
     BusChain* busChain;
     bool busChainEnable = false;
     uint16_t lastRawAngle;

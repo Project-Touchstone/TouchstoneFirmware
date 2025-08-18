@@ -26,7 +26,7 @@ void setup() {
   }
   BusChain::begin(SER, CLK, RCLK, 2);
 
-  int err = BusChain::selectPort(targetPort);
+  int err = BusChain::selectChannel(targetPort);
   if (err != 0) {
     Serial.print("Error selecting I2C port: ");
     Serial.println(err);
