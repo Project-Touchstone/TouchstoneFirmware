@@ -1,0 +1,28 @@
+#ifndef MAGROTARY_H
+#define MAGROTARY_H
+
+#include <Arduino.h>
+#include <Wire.h>
+#include <AS5600.h>
+#include "BusChain.h"
+
+class MagEncoder {
+public:
+    MagEncoder();
+    bool begin(TwoWire* wire = &Wire);
+    bool begin(uint8_t sensorPort, BusChain* busChain);
+    void update();
+    uint16_t getRawAngle();
+    float getAngleDegrees();
+    float getAngleRadians();
+
+private:
+    AS5600 as5600;
+    TwoWire* i2cPort;
+    uint8_t sensorPort;
+    BusChain* busChain;
+    bool busChainEnable = false;
+    uint16_t lastRawAngle;
+};
+
+#endif // MAGROTARY_H

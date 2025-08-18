@@ -31,9 +31,13 @@ class MagSensor {
         //Spinlock for RTOS
         portMUX_TYPE* spinlock;
 
+        // Whether using BusChain
+        bool busChainEnable = false;
+
     public:
         MagSensor();
         bool begin(uint8_t sensorPort, BusChain *busChain);
+        bool begin(TwoWire* wire);
         void update();
         float getX();
         float getY();

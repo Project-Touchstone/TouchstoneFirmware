@@ -27,24 +27,33 @@
 #include "SerialInterface.h"
 #include "ServoController.h"
 #include "MagSensor.h"
+#include "MagEncoder.h"
 #include "IMU.h"
 
 using namespace SerialHeaders;
 
-//TwoWire object
-TwoWire I2C = TwoWire(0);
+//TwoWire objects
+TwoWire I2CBuses[2] = {TwoWire(0), TwoWire(1)};
 
 // BusChain object
+#ifdef BUSCHAIN_ENABLE
 BusChain busChain;
+#endif
 
-// Magnetic sensor objects
-MagSensor magSensors[NUM_SERVOS*2];
+// Magnetic encoder objects
+#ifdef MAG_ENCODER_ENABLE
+MagEncoder magEncoders[NUM_MAG_ENCODER];
+#endif
 
 //Magnetic tracker objects
-MagSensor magTrackers[2];
+#ifdef MAG_TRACKER_ENABLE
+MagSensor magTrackers[NUM_MAG_TRACKERS];
+#endif
 
-// IMU object
-IMU imu;
+// IMU objects
+#ifdef IMU_ENABLE
+IMU imus[NUM_IMU];
+#endif
 
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
@@ -80,29 +89,34 @@ void setup() {
 	//Configures built-in LED
 	pinMode(LED_BUILTIN, OUTPUT);
 	
-	// Initialize I2C port
-	I2C.begin(I2C_SDA, I2C_SCL);
+	// Initialize I2C ports
+	I2CBuses[0].begin(I2C0_SDA, I2C0_SCL);
+	I2CBuses[1].begin(I2C1_SDA, I2C1_SCL);
 
 	//Initializes buschain object
-	busChain.begin(busChainIDs, &I2C);
+	#ifdef BUSCHAIN_ENABLE
+	busChain.begin(busChainIDs, &I2CBuses[BUSCHAIN_WIRE_BUS]);
+	#endif
 
 	// Initialize servo driver board, flags connection error
+	#ifdef SERVO_ENABLE
 	if (!ServoController::begin(servoDriverPort, &busChain)) {
 		Serial.println("Error connecting to servo driver");
 		while (true) {
 			
 		}
 	}
+	#endif
 
-	// Initialize encoders in order of id
-	for (uint8_t i = 0; i < NUM_SERVOS * 2; i++) {
-		// Finds encoder port for sensor id
-		uint8_t encoderPort = encoderPorts[i / 2][i % 2];
+	// Initialize magnetic encoders
+	for (uint8_t i = 0; i < NUM_MAG_ENCODERS; i++) {
+		// Finds I2C bus for encoder
+		uint8_t encoderBus = magEncoderBuses[i];
 
-		// Attempts to connect through associated port and buschain
-		if (!magSensors[i].begin(encoderPort, &busChain)) {
-			Serial.print("Error connecting to encoder port: ");
-			Serial.println(encoderPort);
+		// Attempts to connect through associated bus
+		if (!magEncoders[i].begin(I2CBuses[encoderBus])) {
+			Serial.print("Error connecting to encoder on bus: ");
+			Serial.println(encoderBus);
 			while (true) {
 				
 			}
@@ -196,7 +210,7 @@ void TaskSensorCritical(void *pvParameters) {
 		for (uint8_t i = 0; i < NUM_SERVOS*2; i++) {
 			// Gets sensor id and updates from I2C
 			sensorID_t sensorID = i;
-			magSensors[sensorID].update();
+			magEncoders[sensorID].update();
 			
 			// Adds sensor ID to queue
             xQueueSend(sensorDataQueue, &sensorID, 0);
@@ -325,8 +339,8 @@ void TaskSerialInterface(void *pvParameters) {
 				// Sends sensor id
 				SerialInterface::writeByte(sensorID);
 				// Sends sensor data
-				SerialInterface::writeInt16(magSensors[sensorID].rawY());
-				SerialInterface::writeInt16(magSensors[sensorID].rawZ());
+				SerialInterface::writeInt16(magEncoders[sensorID].rawY());
+				SerialInterface::writeInt16(magEncoders[sensorID].rawZ());
 			}
 		}
 	}

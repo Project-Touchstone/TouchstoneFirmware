@@ -6,8 +6,14 @@ namespace SerialHeaders {
 
 	//Pings microcontroller
 	#define PING 0x1 // 0 bytes
-	//Servo power update
-	#define SERVO_SIGNAL 0x2 // 3 bytes (1 byte motor id, 2 byte signal value from -1 to 1)
+	//Servo signal update
+	#define SERVO_SIGNAL 0x2 // 3 bytes (1 byte servo id, 2 byte signal value from -1 to 1)
+	//Sends FOC position target
+	#define FOC_POSITION 0x3 // 5 bytes (1 byte motor id, 4 byte position value in radians)
+	//Sends FOC velocity target
+	#define FOC_VELOCITY 0x4 // 5 bytes (1 byte motor id, 4 byte velocity value in radians/s)
+	//Sends FOC torque target
+	#define FOC_TORQUE 0x5 // 5 bytes (1 byte motor id, 4 byte torque value in Nm)
 
 	//Headers from controller to master
 

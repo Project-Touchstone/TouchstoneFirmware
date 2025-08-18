@@ -4,13 +4,51 @@
 //External imports
 #include <Arduino.h>
 
-// Cores to pin RTOS tasks to
+//////////////////////////////////////////////////////////////////
+// RTOS configuration
+//////////////////////////////////////////////////////////////////
+
+// RTOS core affinity
 uint8_t CORE_0 = 0;
 uint8_t CORE_1 = 1;
 
+////////////////////////////////////////////////////////////////////
+// I2C and Serial configuration
+////////////////////////////////////////////////////////////////////
+
 // I2C pins
-#define I2C_SDA 21
-#define I2C_SCL 22
+#define I2C0_SDA 37
+#define I2C0_SCL 38
+#define I2C1_SDA 39
+#define I2C1_SCL 40
+
+// I2C parameters
+#define I2C_BAUD_RATE 1000000
+#define I2C_TIMEOUT 1000 // in milliseconds
+
+//Serial parameters
+#define SERIAL_BAUD_RATE 460800
+
+///////////////////////////////////////////////////////////////////
+// BusChain configuration
+////////////////////////////////////////////////////////////////////
+
+//#define BUSCHAIN_ENABLE
+
+// BusChain Wire bus
+#define BUSCHAIN_WIRE_BUS 0
+
+// BusChain address identifiers (in order of port chain)
+//uint8_t busChainIDs[2] = {0, 1};
+
+////////////////////////////////////////////////////////////////////
+// Servo configuration
+////////////////////////////////////////////////////////////////////
+
+//#define SERVO_ENABLE
+
+/*
+#define NUM_SERVOS 4
 
 // PWM output pin on channel 0 of servo driver used for servo synchronization
 #define interruptPin 4
@@ -18,35 +56,72 @@ uint8_t CORE_1 = 1;
 // Servo driver port
 #define servoDriverPort 3
 
-// IMU port
-#define imuPort 13
-
-// IMU sensor id
-#define imuID 0
-
-// Servos to configure
-#define NUM_SERVOS 4
-
-//Serial parameters
-#define SERIAL_BAUD_RATE 460800
-
-// I2C parameters
-#define I2C_BAUD_RATE 1000000
-#define I2C_TIMEOUT 1000 // in milliseconds
-
-// BusChain address identifiers
-uint8_t busChainIDs[2] = {0, 1};
-
 // Servo channels
 const uint8_t servoChannels[NUM_SERVOS] = {0, 1, 2, 3};
 
 // Servo power multiplier
-const float servoSignalMultiplier = 1./32767.;
+const float servoSignalMultiplier = 1./32767.;*/
 
-// Encoder ports on BusChain (servo, spool) per DRIFT motor
-const uint8_t encoderPorts[NUM_SERVOS][2] = {{10, 11}, {0, 1}, {7, 6}, {8, 9}};
+////////////////////////////////////////////////////////////////////
+// HydraFOC motor configuration
+////////////////////////////////////////////////////////////////////
 
-// Magnetic tracker ports
-const uint8_t magTrackerPorts[2] = {14, 15};
+#define HYDRAFOC_ENABLE
+
+#define NUM_FOC_MOTORS 2
+
+// HydraFOC motor pins
+// Note: each motor has 3 pairs of pins, where the first is enable
+// and the second is which mosfet to turn on
+const uint8_t focMotorPins[NUM_FOC_MOTORS][6] =
+{
+    {3, 18, 9, 46, 11, 10}, // Motor 0
+    {47, 21, 45, 48, 36, 35} // Motor 1
+};
+
+// Driver reset and sleep pins
+#define focDriverResetPin 41
+#define focDriverSleepPin 42
+
+// Current sensing pins (2 phases per motor)
+const uint8_t focCurrentPins[NUM_FOC_MOTORS][2] =
+{
+    {7, 6}, // Motor 0
+    {17, 16} // Motor 1
+};
+
+////////////////////////////////////////////////////////////////////////////
+// IMU configuration
+////////////////////////////////////////////////////////////////////
+
+//#define IMU_ENABLE
+
+/*#define NUM_IMU 1
+
+// IMU buschain ports
+const uint8_t imuPorts[NUM_IMU] = {13};*/
+
+///////////////////////////////////////////////////////////////////
+// Magnetic encoder configuration
+////////////////////////////////////////////////////////////////////
+
+#define MAG_ENCODER_ENABLE
+
+#define NUM_MAG_ENCODERS NUM_FOC_MOTORS
+
+// Magnetic encoder sensor Wire buses
+// Note: order defines pairing with motors
+const uint8_t magEncoderBuses[NUM_MAG_ENCODERS] = {0, 1};
+
+//////////////////////////////////////////////////////////////
+// Magnetic tracker configuration
+////////////////////////////////////////////////////////////////////
+
+//#define MAG_TRACKER_ENABLE
+
+/*#define NUM_MAG_TRACKERS 2
+// Magnetic tracker ports on BusChain
+const uint8_t magTrackerPorts[2] = {14, 15};*/
+
 
 #endif // WINDOW_CONFIGURATION_H

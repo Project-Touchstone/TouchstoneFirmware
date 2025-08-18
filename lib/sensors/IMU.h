@@ -43,9 +43,13 @@ class IMU {
 
         sensors_event_t a, g, temp;
 
+        // Whether using BusChain
+        bool busChainEnable = false;
+
     public:
         IMU();
         bool begin(uint8_t sensorPort, BusChain *busChain);
+        bool begin(TwoWire* wire);
         void setParameters(mpu6050_accel_range_t accelRange, mpu6050_gyro_range_t gyroRange, mpu6050_bandwidth_t filterBand);
         void update();
         void getAccel(float *x, float *y, float *z);
