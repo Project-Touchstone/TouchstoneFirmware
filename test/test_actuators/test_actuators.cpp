@@ -27,21 +27,21 @@ void setUp() {
 
 #ifdef SERVO_ENABLE
 void test_servo_begin() {
-    TEST_ASSERT_MESSAGE(ServoController::begin(servoDriverChannel, &busChain), ("Servo controller begin failed on channel " + String(servoDriverPort)).c_str());
+    TEST_ASSERT_MESSAGE(servoController.begin(servoDriverChannel, &busChain), ("Servo controller begin failed on channel " + String(servoDriverPort)).c_str());
 }
 
 void test_servo_set_power() {
     test_servo_begin();
     // Loops through servos in configuration and tests forward, backward, and stopping one at a time
     for (uint8_t i = 0; i < NUM_SERVOS; i++) {
-        ServoController::setSignal(servoChannels[i], 0.1f);
-        ServoController::updatePWMDriver(servoChannels[i]);
+        servoController.setSignal(servoChannels[i], 0.1f);
+        servoController.updatePWMDriver(servoChannels[i]);
         delay(1000);
-        ServoController::setSignal(servoChannels[i], -0.1f);
-        ServoController::updatePWMDriver(servoChannels[i]);
+        servoController.setSignal(servoChannels[i], -0.1f);
+        servoController.updatePWMDriver(servoChannels[i]);
         delay(1000);
-        ServoController::setSignal(servoChannels[i], 0.0f);
-        ServoController::updatePWMDriver(servoChannels[i]);
+        servoController.setSignal(servoChannels[i], 0.0f);
+        servoController.updatePWMDriver(servoChannels[i]);
         delay(1000);
     }
     // No assertion, just check whether each servo turns on

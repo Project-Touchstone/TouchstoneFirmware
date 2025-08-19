@@ -5,12 +5,13 @@
 #include <Wire.h>
 #include <AS5600.h>
 #include "BusChain.h"
+#include "I2CDevice.h"
 
-class MagEncoder {
+class MagEncoder : public I2CDevice {
 public:
     MagEncoder();
-    bool begin(TwoWire* wire = &Wire);
-    bool begin(uint8_t sensorPort, BusChain* busChain);
+    bool begin(TwoWire* wire) override;
+    bool begin(uint8_t sensorPort, BusChain* busChain) override;
     void update();
     uint16_t getRawAngle();
     float getAngleDegrees();
@@ -19,7 +20,7 @@ public:
 private:
     AS5600 as5600;
     TwoWire* i2cPort;
-    uint8_t sensorChannel;
+    uint8_t sensorChannel = 0;
     BusChain* busChain;
     bool busChainEnable = false;
     uint16_t lastRawAngle;

@@ -14,8 +14,9 @@
 
 //Local imports
 #include "BusChain.h"
+#include "I2CDevice.h"
 
-class IMU {
+class IMU : public I2CDevice {
     private:
         //IMU object
         Adafruit_MPU6050 imu;
@@ -33,7 +34,7 @@ class IMU {
         //BusChain object
         BusChain* busChain;
         //Sensor channel on BusChain
-        uint8_t sensorChannel;
+        uint8_t sensorChannel = 0;
 
         //I2C bus
         TwoWire *i2cBus;
@@ -48,8 +49,8 @@ class IMU {
 
     public:
         IMU();
-        bool begin(uint8_t sensorPort, BusChain *busChain);
-        bool begin(TwoWire* wire);
+        bool begin(uint8_t sensorPort, BusChain *busChain) override;
+        bool begin(TwoWire* wire) override;
         void setParameters(mpu6050_accel_range_t accelRange, mpu6050_gyro_range_t gyroRange, mpu6050_bandwidth_t filterBand);
         void update();
         void getAccel(float *x, float *y, float *z);

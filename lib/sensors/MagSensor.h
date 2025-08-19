@@ -14,8 +14,9 @@
 
 //Local imports
 #include "BusChain.h"
+#include "I2CDevice.h"
 
-class MagSensor {
+class MagSensor : public I2CDevice {
     private:
         //MagSensor object
         Tlv493d magSensor;
@@ -23,7 +24,7 @@ class MagSensor {
         //BusChain object
         BusChain* busChain;
         //Sensor channel on BusChain
-        uint8_t sensorChannel;
+        uint8_t sensorChannel = 0;
 
         //I2C bus
         TwoWire *i2cBus;
@@ -36,8 +37,8 @@ class MagSensor {
 
     public:
         MagSensor();
-        bool begin(uint8_t sensorPort, BusChain *busChain);
-        bool begin(TwoWire* wire);
+        bool begin(uint8_t sensorPort, BusChain *busChain) override;
+        bool begin(TwoWire* wire) override;
         void update();
         float getX();
         float getY();

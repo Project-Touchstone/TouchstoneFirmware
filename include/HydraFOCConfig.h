@@ -1,5 +1,5 @@
-#ifndef WINDOW_CONFIGURATION_H
-#define WINDOW_CONFIGURATION_H
+#ifndef HYDRA_FOC_CONFIG_H
+#define HYDRA_FOC_CONFIG_H
 
 //External imports
 #include <Arduino.h>
@@ -29,38 +29,12 @@ uint8_t CORE_1 = 1;
 //Serial parameters
 #define SERIAL_BAUD_RATE 460800
 
-///////////////////////////////////////////////////////////////////
-// BusChain configuration
-////////////////////////////////////////////////////////////////////
-
-//#define BUSCHAIN_ENABLE
-
-// BusChain Wire bus
-#define BUSCHAIN_WIRE_BUS 0
-
-// BusChain address identifiers (in order of chain)
-//uint8_t busChainIDs[2] = {0, 1};
-
 ////////////////////////////////////////////////////////////////////
 // Servo configuration
-////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
 
-//#define SERVO_ENABLE
-
-/*
-#define NUM_SERVOS 4
-
-// PWM output pin on channel 0 of servo driver used for servo synchronization
-#define interruptPin 4
-
-// Servo driver channel on BuChain
-#define servoDriverChannel 3
-
-// Servo channels
-const uint8_t servoChannels[NUM_SERVOS] = {0, 1, 2, 3};
-
-// Servo power multiplier
-const float servoSignalMultiplier = 1./32767.;*/
+// Servo signal multiplier for deserialization
+const float servoSignalMultiplier = 1./32767.;
 
 ////////////////////////////////////////////////////////////////////
 // HydraFOC motor configuration
@@ -94,38 +68,8 @@ const uint8_t focCurrentPins[NUM_FOC_MOTORS][2] =
 // IMU configuration
 ////////////////////////////////////////////////////////////////////
 
-//#define IMU_ENABLE
-
-/*#define NUM_IMU 1
-
 #define IMU_ACCEL_RANGE MPU6050_RANGE_2_G
 #define IMU_GYRO_RANGE MPU6050_RANGE_250_DEG
 #define IMU_FILTER_BAND MPU6050_BAND_260_HZ
 
-// IMU buschain channels
-const uint8_t imuChannels[NUM_IMU] = {13};*/
-
-///////////////////////////////////////////////////////////////////
-// Magnetic encoder configuration
-////////////////////////////////////////////////////////////////////
-
-#define MAG_ENCODER_ENABLE
-
-#define NUM_MAG_ENCODERS NUM_FOC_MOTORS
-
-// Magnetic encoder sensor Wire buses
-// Note: order defines pairing with motors
-const uint8_t magEncoderBuses[NUM_MAG_ENCODERS] = {0, 1};
-
-//////////////////////////////////////////////////////////////
-// Magnetic tracker configuration
-////////////////////////////////////////////////////////////////////
-
-//#define MAG_TRACKER_ENABLE
-
-/*#define NUM_MAG_TRACKERS 2
-// Magnetic tracker channels on BusChain
-const uint8_t magTrackerChannels[2] = {14, 15};*/
-
-
-#endif // WINDOW_CONFIGURATION_H
+#endif // HYDRA_FOC_CONFIG_H

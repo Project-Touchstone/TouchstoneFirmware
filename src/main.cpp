@@ -15,12 +15,14 @@
 
 //External imports
 #include <Arduino.h>
+#include <vector>
 #include <math.h>
 #include <Wire.h>
 
 //Configuration imports
-#include "WindowConfig.h"
+#include "HydraFOCConfig.h"
 #include "SerialHeaders.h"
+#include "DynamicConfig.h"
 
 //Internal library imports
 #include "BusChain.h"
@@ -32,28 +34,24 @@
 
 using namespace SerialHeaders;
 
+//Dynamic configuration object
+DynamicConfig config;
+
 //TwoWire objects
 TwoWire I2CBuses[2] = {TwoWire(0), TwoWire(1)};
 
-// BusChain object
-#ifdef BUSCHAIN_ENABLE
-BusChain busChain;
-#endif
+// BusChain objects for each bus
+// note: there may not be a physical BusChain on each bus
+BusChain busChains[2];
 
-// Magnetic encoder objects
-#ifdef MAG_ENCODER_ENABLE
-MagEncoder magEncoders[NUM_MAG_ENCODER];
-#endif
+// Vectors of I2C device objects
+std::vector<MagEncoder> magEncoders;
+std::vector<MagSensor> magTrackers;
+std::vector<IMU> imus;
+std::vector<ServoController> servoDrivers;
 
-//Magnetic tracker objects
-#ifdef MAG_TRACKER_ENABLE
-MagSensor magTrackers[NUM_MAG_TRACKERS];
-#endif
-
-// IMU objects
-#ifdef IMU_ENABLE
-IMU imus[NUM_IMU];
-#endif
+// Vector of FOC motor objects
+std::vector<HydraFOCMotor> focMotors;
 
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
@@ -70,24 +68,18 @@ TaskHandle_t sensorNonCriticalHandle;
 TaskHandle_t servoControllerHandle;
 TaskHandle_t serialInterfaceHandle;
 
-// Define sensor data queue
-typedef uint8_t sensorID_t;
-QueueHandle_t sensorDataQueue;
-
-// Define servo data queue
-typedef uint8_t servoID_t;
-QueueHandle_t servoDataQueue;
-
+// Whether serial connection is alive
 bool aliveFlag = false;
+// Whether non-critical sensor task has completed this cycle
 bool nonCriticalFlag = false;
 
 // The setup function runs once when you press reset or power on the board.
 void setup() {
-	// Initialize serial communication at 115200 bits per second:
-	SerialInterface::begin(SERIAL_BAUD_RATE);
-	
 	//Configures built-in LED
 	pinMode(LED_BUILTIN, OUTPUT);
+
+	// Initialize serial communication at 115200 bits per second:
+	SerialInterface::begin(SERIAL_BAUD_RATE);
 	
 	// Initialize I2C ports
 	I2CBuses[0].begin(I2C0_SDA, I2C0_SCL);
@@ -99,30 +91,27 @@ void setup() {
 		I2CBuses[i].setClock(I2C_BAUD_RATE);
 	}
 
-	//Initializes buschain object
-	#ifdef BUSCHAIN_ENABLE
-	busChain.begin(busChainIDs, &I2CBuses[BUSCHAIN_WIRE_BUS]);
-	#endif
+	// Fetches configuration data from master
 
-	// Initialize servo driver board, flags connection error
-	#ifdef SERVO_ENABLE
-	if (!ServoController::begin(servoDriverPort, &busChain)) {
-		Serial.println("Error connecting to servo driver");
-		while (true) {
-			
-		}
+	//Initializes buschain objects
+	for (uint8_t i = 0; i < config.numBusChains(); i++) {
+		config.initBusChain(config.getBusChain(i), busChains[i]);
 	}
-	#endif
 
 	// Initialize magnetic encoders
-	for (uint8_t i = 0; i < NUM_MAG_ENCODERS; i++) {
-		// Finds I2C bus for encoder
-		uint8_t encoderBus = magEncoderBuses[i];
+	for (uint8_t i = 0; i < config.numMagEncoders(); i++) {
+		// Attempts to connect through associated config
+		if (!config.initI2CDevice("magnetic encoder", config.getMagEncoder(i), magEncoders[i])) {
+			while (true) {
+				
+			}
+		}
+  	}
 
-		// Attempts to connect through associated bus
-		if (!magEncoders[i].begin(I2CBuses[encoderBus])) {
-			Serial.print("Error connecting to encoder on bus: ");
-			Serial.println(encoderBus);
+	// Initializes magnetic trackers
+	for (uint8_t i = 0; i < config.numMagTrackers(); i++) {
+		// Attempts to connect through associated config
+		if (!config.initI2CDevice("magnetic tracker", config.getMagTracker(i), magTrackers[i])) {
 			while (true) {
 				
 			}
@@ -130,50 +119,35 @@ void setup() {
   	}
 
 	// Initializes IMU objects
-	#ifdef IMU_ENABLE
-	for (uint8_t i = 0; i < NUM_IMU; i++) {
-		uint8_t imuChannel = imuChannels[i];
-		imus[i].setParameters(IMU_ACCEL_RANGE, IMU_GYRO_RANGE, IMU_FILTER_BAND);
-		if (!imus[i].begin(imuChannel, &busChain)) {
-			Serial.print("Error connecting to IMU on channel: ");
-			Serial.println(imuChannel);
+	for (uint8_t i = 0; i < config.numIMUs(); i++) {
+		// Attempts to connect through associated config
+		if (!config.initIMU(config.getIMU(i), imus[i])) {
 			while (true) {
 				
 			}
 		}
 	}
-	#endif
 
-	// Initializes magnetic trackers
-	#ifdef MAG_TRACKER_ENABLE
-	for (uint8_t i = 0; i < NUM_MAG_TRACKERS; i++) {
-		// Finds tracker channel for sensor id
-		uint8_t trackerChannel = magTrackerChannels[i];
-
-		// Attempts to connect through associated channel and buschain
-		if (!magTrackers[i].begin(trackerChannel, &busChain)) {
-			Serial.print("Error connecting to magnetic tracker channel: ");
-			Serial.println(trackerChannel);
+	// Initialize servo driver boards
+	for (uint8_t i = 0; i < config.numServoDrivers(); i++) {
+		// Attempts to connect through associated config
+		if (!config.initServoDriver(config.getServoDriver(i), servoDrivers[i])) {
 			while (true) {
 				
 			}
 		}
-  	}
-	#endif
+	}
 
-	sensorDataQueue = xQueueCreate(NUM_SERVOS*2, sizeof(sensorID_t));
+	// RTOS task initialization
+
+	sensorDataQueue = xQueueCreate(NUM_MAG_ENCODERS, sizeof(sensorID_t));
 	servoDataQueue = xQueueCreate(NUM_SERVOS, sizeof(servoID_t));
 
 	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
-	
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_0);
-
 	xTaskCreatePinnedToCore(TaskSensorCritical, "Sensor Critical", 2048, NULL, 3, &sensorCriticalHandle, CORE_0);
-
 	xTaskCreatePinnedToCore(TaskSensorNonCritical, "Sensor Non-critical", 2048, NULL, 4, &sensorNonCriticalHandle, CORE_0);
-	
 	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, CORE_1);
-
 	attachInterrupt(interruptPin, onPWMStart, RISING);
 }
 
@@ -182,7 +156,7 @@ void IRAM_ATTR onPWMStart() {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	// Updates pwm cycle timer for servo synchronization
-	ServoController::updatePWMTime();
+	servoController.updatePWMTime();
 
 	// Notifies pwm cycle task to wake
 	vTaskNotifyGiveFromISR(pwmCycleHandle, &xHigherPriorityTaskWoken);
@@ -206,7 +180,7 @@ void TaskPWMCycle(void *pvParameters) {
 
 		// Updates meta PWM based on previous servo powers
 		for (uint8_t i = 0; i < NUM_SERVOS; i++) {
-			ServoController::updatePWMCompute(servoChannels[i]);
+			servoController.updatePWMCompute(servoChannels[i]);
 		}
 	}
 }
@@ -260,7 +234,7 @@ void TaskServoController(void *pvParameters) {
 		xQueueReceive(servoDataQueue, &servoID, portMAX_DELAY);
 
 		// Sends PWM ranges to PWM driver over I2C
-		ServoController::updatePWMDriver(servoChannels[servoID]);
+		servoController.updatePWMDriver(servoChannels[servoID]);
 	}
 }
 
@@ -291,7 +265,7 @@ void TaskSerialInterface(void *pvParameters) {
 						//Ensures servo ID and signal are within ranges
 						if ((servoID < sizeof(servoChannels)/sizeof(servoChannels[0])) && (abs(signal) <= 1)) {
 							// Sets servo power
-							ServoController::setSignal(servoChannels[servoID], signal);
+							servoController.setSignal(servoChannels[servoID], signal);
 						}
 						// Adds servo to queue
 						xQueueSend(servoDataQueue, &servoID, 0);

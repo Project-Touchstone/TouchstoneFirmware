@@ -11,7 +11,6 @@ IMU::IMU() {
 	spinlock = (portMUX_TYPE*) malloc(sizeof(portMUX_TYPE));
 	// Initialize the spinlock dynamically
 	portMUX_INITIALIZE(spinlock);
-	busChainEnable = false;
 }
 
 /// @brief Initializes imu object using BusChain
