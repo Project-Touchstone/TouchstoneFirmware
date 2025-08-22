@@ -28,6 +28,7 @@
 #include "BusChain.h"
 #include "SerialInterface.h"
 #include "ServoController.h"
+#include "HydraFOCMotor.h"
 #include "MagSensor.h"
 #include "MagEncoder.h"
 #include "IMU.h"
@@ -56,10 +57,13 @@ std::vector<HydraFOCMotor> focMotors;
 // Task and interrupt function prototypes
 void IRAM_ATTR onPWMStart();
 void TaskPWMCycle(void *pvParameters);
-void TaskSensorCritical(void *pvParameters);
-void TaskSensorNonCritical(void *pvParameters);
+void TaskSensorUpdate(void *pvParameters);
 void TaskServoController(void *pvParameters);
 void TaskSerialInterface(void *pvParameters);
+
+
+typedef DynamicConfig::ServoConfig servoID_t;
+QueueHandle_t servoDataQueue;
 
 // Define task handles
 TaskHandle_t pwmCycleHandle;
@@ -91,64 +95,19 @@ void setup() {
 		I2CBuses[i].setClock(I2C_BAUD_RATE);
 	}
 
-	// Fetches configuration data from master
-
-	//Initializes buschain objects
-	for (uint8_t i = 0; i < config.numBusChains(); i++) {
-		config.initBusChain(config.getBusChain(i), busChains[i]);
-	}
-
-	// Initialize magnetic encoders
-	for (uint8_t i = 0; i < config.numMagEncoders(); i++) {
-		// Attempts to connect through associated config
-		if (!config.initI2CDevice("magnetic encoder", config.getMagEncoder(i), magEncoders[i])) {
-			while (true) {
-				
-			}
-		}
-  	}
-
-	// Initializes magnetic trackers
-	for (uint8_t i = 0; i < config.numMagTrackers(); i++) {
-		// Attempts to connect through associated config
-		if (!config.initI2CDevice("magnetic tracker", config.getMagTracker(i), magTrackers[i])) {
-			while (true) {
-				
-			}
-		}
-  	}
-
-	// Initializes IMU objects
-	for (uint8_t i = 0; i < config.numIMUs(); i++) {
-		// Attempts to connect through associated config
-		if (!config.initIMU(config.getIMU(i), imus[i])) {
-			while (true) {
-				
-			}
-		}
-	}
-
-	// Initialize servo driver boards
-	for (uint8_t i = 0; i < config.numServoDrivers(); i++) {
-		// Attempts to connect through associated config
-		if (!config.initServoDriver(config.getServoDriver(i), servoDrivers[i])) {
-			while (true) {
-				
-			}
-		}
-	}
+	// Sets configuration I2C buses and buschains
+	config.setI2CBuses(I2CBuses);
+    config.setBusChains(busChains);
 
 	// RTOS task initialization
-
-	sensorDataQueue = xQueueCreate(NUM_MAG_ENCODERS, sizeof(sensorID_t));
-	servoDataQueue = xQueueCreate(NUM_SERVOS, sizeof(servoID_t));
+	servoDataQueue = xQueueCreate(config.numServos(), sizeof(servoID_t));
 
 	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_0);
-	xTaskCreatePinnedToCore(TaskSensorCritical, "Sensor Critical", 2048, NULL, 3, &sensorCriticalHandle, CORE_0);
+	xTaskCreatePinnedToCore(TaskSensorUpdate, "Sensor Critical", 2048, NULL, 3, &sensorCriticalHandle, CORE_0);
 	xTaskCreatePinnedToCore(TaskSensorNonCritical, "Sensor Non-critical", 2048, NULL, 4, &sensorNonCriticalHandle, CORE_0);
 	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, CORE_1);
-	attachInterrupt(interruptPin, onPWMStart, RISING);
+	QueueHandle_t sensorDataQueue;
 }
 
 // Called on rising pwm interrupt pin
@@ -156,7 +115,9 @@ void IRAM_ATTR onPWMStart() {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	// Updates pwm cycle timer for servo synchronization
-	servoController.updatePWMTime();
+	for (uint8_t i = 0; i < config.numServoDrivers(); i++) {
+		servoDrivers[i].updatePWMTime();
+	}
 
 	// Notifies pwm cycle task to wake
 	vTaskNotifyGiveFromISR(pwmCycleHandle, &xHigherPriorityTaskWoken);
@@ -185,7 +146,7 @@ void TaskPWMCycle(void *pvParameters) {
 	}
 }
 
-void TaskSensorCritical(void *pvParameters) {
+void TaskSensorUpdate(void *pvParameters) {
 	(void)pvParameters;
 	while (!aliveFlag) {
 		vTaskDelay(1);

@@ -1,5 +1,5 @@
 /**
- * MagSensor.h - Custom ring-based multi-magnet encoder implementation
+ * MagSensor.h - 3D magnetic sensor driver
  * Created by Carson G. Ray
  */
 

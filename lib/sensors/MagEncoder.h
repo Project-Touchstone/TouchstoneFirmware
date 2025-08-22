@@ -1,5 +1,10 @@
-#ifndef MAGROTARY_H
-#define MAGROTARY_H
+/**
+ * MagEncoder.h - Rotary magnetic sensor driver
+ * Created by Carson G. Ray
+ */
+
+#ifndef MAGENCODER_H
+#define MAGENCODER_H
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -26,4 +31,4 @@ private:
     uint16_t lastRawAngle;
 };
 
-#endif // MAGROTARY_H
+#endif // MAGENCODER_H

@@ -1,3 +1,8 @@
+/**
+ * I2CDevice.h - Parent class for I2C-type drivers
+ * Created by Carson G. Ray
+ */
+
 #ifndef I2CDEVICE_H
 #define I2CDEVICE_H
 

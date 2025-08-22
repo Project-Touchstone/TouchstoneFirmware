@@ -1,3 +1,8 @@
+/**
+ * MagEncoder.cpp - Rotary magnetic sensor driver
+ * Created by Carson G. Ray
+ */
+
 #include "MagEncoder.h"
 
 // AS5600 default I2C address is 0x36

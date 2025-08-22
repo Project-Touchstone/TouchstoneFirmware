@@ -1,3 +1,8 @@
+/**
+ * DyanmicConfig.h - Dynamic hardware peripheral configuration framework
+ * Created by Carson G. Ray
+ */
+
 #ifndef DYNAMIC_CONFIG_H
 #define DYNAMIC_CONFIG_H
 
@@ -6,6 +11,11 @@
 #include <Adafruit_MPU6050.h>
 #include <vector>
 #include <string>
+#include <mutex>
+
+// Local library imports
+#include "I2CDevice.h"
+#include "BusChain.h"
 
 class DynamicConfig {
     public:
@@ -32,32 +42,46 @@ class DynamicConfig {
             mpu6050_bandwidth_t filterBand;
         };
 
-        void addBusChain(BusChainConfig config);
-        void addI2CDevice(I2CDeviceConfig config);
-        void addServo(ServoConfig config);
-        void addFOCMotor(FOCMotorConfig config);
+        void setI2CBuses(TwoWire* buses);
+        void setBusChains(BusChain* busChains);
 
-        uint8_t numBusChains();
-        uint8_t numMagEncoders();
-        uint8_t numMagTrackers();
-        uint8_t numIMUs();
-        uint8_t numServoDrivers();
+        void addBusChain(const BusChainConfig config);
+        void addMagEncoder(const I2CDeviceConfig config);
+        void addMagTracker(const I2CDeviceConfig config);
+        void addIMU(const I2CDeviceConfig config);
+        void addServoDriver(const I2CDeviceConfig config);
+        void addServo(const ServoConfig config);
+        void addFOCMotor(const FOCMotorConfig config);
 
-        BusChainConfig getBusChain(uint8_t id);
-        I2CDeviceConfig getMagEncoder(uint8_t id);
-        I2CDeviceConfig getMagTracker(uint8_t id);
-        I2CDeviceConfig getIMU(uint8_t id);
-        I2CDeviceConfig getServoDriver(uint8_t id);
-        ServoConfig getServo(uint8_t id);
-        FOCMotorConfig getFOCMotor(uint8_t id);
+        uint8_t numBusChains() const;
+        uint8_t numMagEncoders() const;
+        uint8_t numMagTrackers() const;
+        uint8_t numIMUs() const;
+        uint8_t numServos() const;
+        uint8_t numServoDrivers() const;
 
-        void beginBusChain(BusChainConfig config, BusChain busChain);
-        void beginI2CDevice(std::string name, I2CDeviceConfig config, I2CDevice i2cDevice);
+        BusChainConfig getBusChain(uint8_t id) const;
+        I2CDeviceConfig getMagEncoder(uint8_t id) const;
+        I2CDeviceConfig getMagTracker(uint8_t id) const;
+        I2CDeviceConfig getIMU(uint8_t id) const;
+        I2CDeviceConfig getServoDriver(uint8_t id) const;
+        ServoConfig getServo(uint8_t id) const;
+        FOCMotorConfig getFOCMotor(uint8_t id) const;
 
-        void beginAllBusChains(std::vector<BusChain>* busChains);
-        void beginAllI2CDevices(std::vector<I2CDevice>* i2cDevices);
+        void beginBusChain(BusChainConfig config, BusChain& busChain);
+        bool beginI2CDevice(const I2CDeviceConfig config, I2CDevice& i2cDevice);
+        std::string describeI2CDevice(const I2CDeviceConfig config) const;
     
     private:
+        // Mutex for thread safety
+        mutable std::mutex configMutex;
+
+        // Pointer to I2C buses
+        TwoWire* i2cBuses;
+
+        // Pointer to BusChain objects
+        BusChain* busChains;
+
         // Vector of bus chain configurations
         std::vector<BusChainConfig> busChainConfigs;
 
@@ -68,7 +92,7 @@ class DynamicConfig {
         std::vector<I2CDeviceConfig> servoDriverConfigs;
 
         // Vector of servo configurations
-        std::vector<ServoConfig> servoConfig;
+        std::vector<ServoConfig> servoConfigs;
 
         // Vector of FOC motor configurations
         std::vector<FOCMotorConfig> focMotorConfigs;
@@ -84,6 +108,6 @@ class DynamicConfig {
             MPU6050_BAND_260_HZ, MPU6050_BAND_184_HZ, MPU6050_BAND_94_HZ, MPU6050_BAND_44_HZ
         };
         IMUParams imuParams;
-}
+};
 
 #endif
