@@ -65,13 +65,13 @@ bool ServoController::begin(TwoWire* wire) {
 
 /// @brief Resets all servo parameters
 void ServoController::reset() {
-    taskENTER_CRITICAL(&spinlock);
+    taskENTER_CRITICAL(spinlock);
     for (uint8_t i = 0; i < MAX_SERVOS; i++) {
         pwmStarts[i] = -1;
         basePWMs[i] = 0;
         criticalCounts[i] = 0;
     }
-    taskEXIT_CRITICAL(&spinlock);
+    taskEXIT_CRITICAL(spinlock);
 }
 
 /// @brief Sets signal of servo
@@ -96,23 +96,23 @@ void ServoController::setSignal(uint8_t channel, float power) {
     int8_t criticalCount = (int8_t) ((power*rangeLength - intervals*deadband)*deadbandRes/deadband);
 
     // Updates servo parameters
-    taskENTER_CRITICAL_ISR(&spinlock);
+    taskENTER_CRITICAL_ISR(spinlock);
     basePWMs[channel] = basePWM;
     criticalCounts[channel] = criticalCount;
-    taskEXIT_CRITICAL_ISR(&spinlock);
+    taskEXIT_CRITICAL_ISR(spinlock);
 }
 
 /// @brief Updates start time of pwm cycle
 void ServoController::updatePWMTime() {
-    taskENTER_CRITICAL_ISR(&spinlock);
+    taskENTER_CRITICAL_ISR(spinlock);
     startTime = micros();
-    taskEXIT_CRITICAL_ISR(&spinlock);
+    taskEXIT_CRITICAL_ISR(spinlock);
 }
 
 /// @brief Updates PWM ranges for servo
 /// @param channel Servo channel number
 void ServoController::updatePWMCompute(uint8_t channel) {
-    taskENTER_CRITICAL(&spinlock);
+    taskENTER_CRITICAL(spinlock);
     pulseCount += 1;
     // Resets pulse count if it reaches deadband resolution
     if (pulseCount == deadbandRes) {
@@ -121,7 +121,7 @@ void ServoController::updatePWMCompute(uint8_t channel) {
     // Retrieves servo parameters
     uint16_t basePWM = basePWMs[channel];
     int16_t criticalCount = criticalCounts[channel];
-    taskEXIT_CRITICAL(&spinlock);
+    taskEXIT_CRITICAL(spinlock);
 
     if (basePWM > 0) {
         uint16_t pulseLength;

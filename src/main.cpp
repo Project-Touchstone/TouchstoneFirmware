@@ -61,7 +61,7 @@ void TaskSensorUpdate(void *pvParameters);
 void TaskServoController(void *pvParameters);
 void TaskSerialInterface(void *pvParameters);
 
-
+// Queue for sending servo commands
 typedef DynamicConfig::ServoConfig servoID_t;
 QueueHandle_t servoDataQueue;
 
@@ -74,8 +74,6 @@ TaskHandle_t serialInterfaceHandle;
 
 // Whether serial connection is alive
 bool aliveFlag = false;
-// Whether non-critical sensor task has completed this cycle
-bool nonCriticalFlag = false;
 
 // The setup function runs once when you press reset or power on the board.
 void setup() {
@@ -105,9 +103,7 @@ void setup() {
 	xTaskCreatePinnedToCore(TaskSerialInterface, "Serial Interface", 2048, NULL, 5, &serialInterfaceHandle, CORE_1);
 	xTaskCreatePinnedToCore(TaskServoController, "Servo Controller", 2048, NULL, 4, &servoControllerHandle, CORE_0);
 	xTaskCreatePinnedToCore(TaskSensorUpdate, "Sensor Critical", 2048, NULL, 3, &sensorCriticalHandle, CORE_0);
-	xTaskCreatePinnedToCore(TaskSensorNonCritical, "Sensor Non-critical", 2048, NULL, 4, &sensorNonCriticalHandle, CORE_0);
 	xTaskCreatePinnedToCore(TaskPWMCycle, "PWM Cycle", 2048, NULL, 4, &pwmCycleHandle, CORE_1);
-	QueueHandle_t sensorDataQueue;
 }
 
 // Called on rising pwm interrupt pin
@@ -140,8 +136,11 @@ void TaskPWMCycle(void *pvParameters) {
 		xTaskNotifyGive(sensorNonCriticalHandle);
 
 		// Updates meta PWM based on previous servo powers
-		for (uint8_t i = 0; i < NUM_SERVOS; i++) {
-			servoController.updatePWMCompute(servoChannels[i]);
+		for (uint8_t i = 0; i < config.numServos(); i++) {
+			DynamicConfig::ServoConfig servoConfig = config.getServo(i);
+			uint8_t driverId = servoConfig.servoDriverId;
+			uint8_t channel = servoConfig.channel;
+			servoDrivers[driverId].updatePWMCompute(channel);
 		}
 	}
 }
@@ -152,38 +151,21 @@ void TaskSensorUpdate(void *pvParameters) {
 		vTaskDelay(1);
 	}
 	for (;;) {
-		for (uint8_t i = 0; i < NUM_SERVOS*2; i++) {
-			// Gets sensor id and updates from I2C
-			sensorID_t sensorID = i;
-			magEncoders[sensorID].update();
-			
-			// Adds sensor ID to queue
-            xQueueSend(sensorDataQueue, &sensorID, 0);
-
-			// Notifies serial interface to send sensor data
-			xTaskNotifyGive(serialInterfaceHandle);
+		// Updates magnetic encoders
+		for (uint8_t i = 0; i < config.numMagEncoders(); i++) {
+			// Updates from I2C
+			magEncoders[i].update();
 		}
-	}
-}
-
-void TaskSensorNonCritical(void *pvParameters) {
-	(void)pvParameters;
-	while (!aliveFlag) {
-		vTaskDelay(1);
-	}
-	for (;;) {
-		// Waits for notification from pwm cycle task
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		
-		// Updates IMU
-		imu.update();
 		// Updates magnetic trackers
-		for (uint8_t i = 0; i < 2; i++) {
+		for (uint8_t i = 0; i < config.numMagTrackers(); i++) {
+			// Updates from I2C
 			magTrackers[i].update();
 		}
-
-		// Sets flag to notify serial interface
-		nonCriticalFlag = true;
+		// Updates IMUs
+		for (uint8_t i = 0; i < config.numMagTrackers(); i++) {
+			// Updates from I2C
+			imus[i].update();
+		}
 	}
 }
 
@@ -195,7 +177,9 @@ void TaskServoController(void *pvParameters) {
 		xQueueReceive(servoDataQueue, &servoID, portMAX_DELAY);
 
 		// Sends PWM ranges to PWM driver over I2C
-		servoController.updatePWMDriver(servoChannels[servoID]);
+		uint8_t driverId = servoID.servoDriverId;
+        uint8_t channel = servoID.channel;
+		servoDrivers[driverId].updatePWMDriver(channel);
 	}
 }
 

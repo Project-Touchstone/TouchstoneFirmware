@@ -60,7 +60,7 @@ class ServoController : public I2CDevice {
         uint16_t commsDelay = 100;
 
         // Spinlock for RTOS
-        portMUX_TYPE spinlock;
+        portMUX_TYPE* spinlock;
 
     public:
         ServoController();
