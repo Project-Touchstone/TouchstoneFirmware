@@ -1,7 +1,7 @@
-#ifndef SerialHeaders_h
-#define SerialHeaders_h
+#ifndef InterfaceHeaders_h
+#define InterfaceHeaders_h
 
-namespace SerialHeaders {
+namespace InterfaceHeaders {
 	//Headers from client (interface) to server (microcontroller)
 
 	//Pings microcontroller
@@ -58,4 +58,4 @@ namespace SerialHeaders {
 	#define NACK 0x2 // 0 bytes
 }
 
-#endif // SerialHeaders_h
+#endif // InterfaceHeaders_h

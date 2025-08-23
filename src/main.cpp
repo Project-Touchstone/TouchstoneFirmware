@@ -21,19 +21,21 @@
 
 //Configuration imports
 #include "HydraFOCConfig.h"
-#include "SerialHeaders.h"
+#include "InterfaceHeaders.h"
+#include "InterfaceRequestLengths.hpp"
 #include "DynamicConfig.h"
 
 //Internal library imports
 #include "BusChain.h"
-#include "SerialInterface.h"
+#include "MinBiTCore.h"
+#include "MinBiTSerialServer.h"
 #include "ServoController.h"
 #include "HydraFOCMotor.h"
 #include "MagSensor.h"
 #include "MagEncoder.h"
 #include "IMU.h"
 
-using namespace SerialHeaders;
+using namespace InterfaceHeaders;
 
 //Dynamic configuration object
 DynamicConfig config;

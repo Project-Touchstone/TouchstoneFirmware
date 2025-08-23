@@ -4,9 +4,9 @@
 
 // Internal library imports
 #include "SerialInterface.h"
-#include "SerialHeaders.h"
+#include "InterfaceHeaders.h"
 
-using namespace SerialHeaders;
+using namespace InterfaceHeaders;
 
 void test_serial_begin() {
     SerialInterface::begin(115200);

@@ -26,6 +26,4 @@ std::unordered_map<uint8_t, int16_t> lengthsByRequest = {
     { 51, 5 }
 };
 
-
-
 #endif
