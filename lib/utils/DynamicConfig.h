@@ -15,6 +15,7 @@
 
 // Local library imports
 #include "I2CDevice.h"
+#include "IMU.h"
 #include "BusChain.h"
 
 class DynamicConfig {
@@ -28,6 +29,11 @@ class DynamicConfig {
             uint8_t busId; // buschain id (or bus if not on BusChain)
             uint8_t channel; // Channel on BusChain
         };
+        struct IMUConfig : public I2CDeviceConfig {
+            uint8_t accelMode;
+            uint8_t gyroMode;
+            uint8_t filterMode;
+        };
         struct ServoConfig {
             uint8_t servoDriverId; // Servo driver id
             uint8_t channel; // Channel on servo driver
@@ -36,19 +42,13 @@ class DynamicConfig {
             uint8_t port; // Built-in motor driver port (0 or 1)
         };
 
-        struct IMUParams {
-            mpu6050_accel_range_t accelRange;
-            mpu6050_gyro_range_t gyroRange;
-            mpu6050_bandwidth_t filterBand;
-        };
-
         void setI2CBuses(TwoWire* buses);
         void setBusChains(BusChain* busChains);
 
         void addBusChain(const BusChainConfig config);
         void addMagEncoder(const I2CDeviceConfig config);
         void addMagTracker(const I2CDeviceConfig config);
-        void addIMU(const I2CDeviceConfig config);
+        void addIMU(const IMUConfig config);
         void addServoDriver(const I2CDeviceConfig config);
         void addServo(const ServoConfig config);
         void addFOCMotor(const FOCMotorConfig config);
@@ -63,13 +63,15 @@ class DynamicConfig {
         BusChainConfig getBusChain(uint8_t id) const;
         I2CDeviceConfig getMagEncoder(uint8_t id) const;
         I2CDeviceConfig getMagTracker(uint8_t id) const;
-        I2CDeviceConfig getIMU(uint8_t id) const;
+        IMUConfig getIMU(uint8_t id) const;
         I2CDeviceConfig getServoDriver(uint8_t id) const;
         ServoConfig getServo(uint8_t id) const;
         FOCMotorConfig getFOCMotor(uint8_t id) const;
 
         void beginBusChain(BusChainConfig config, BusChain& busChain);
+        bool beginIMU(const IMUConfig config, IMU& imu);
         bool beginI2CDevice(const I2CDeviceConfig config, I2CDevice& i2cDevice);
+        std::string describeBusChain(const BusChainConfig config) const;
         std::string describeI2CDevice(const I2CDeviceConfig config) const;
     
     private:
@@ -88,7 +90,7 @@ class DynamicConfig {
         // Vectors for I2C device configurations
         std::vector<I2CDeviceConfig> magEncoderConfigs;
         std::vector<I2CDeviceConfig> magTrackerConfigs;
-        std::vector<I2CDeviceConfig> imuConfigs;
+        std::vector<IMUConfig> imuConfigs;
         std::vector<I2CDeviceConfig> servoDriverConfigs;
 
         // Vector of servo configurations
@@ -107,7 +109,6 @@ class DynamicConfig {
         mpu6050_bandwidth_t imuFilterBands[4] = {
             MPU6050_BAND_260_HZ, MPU6050_BAND_184_HZ, MPU6050_BAND_94_HZ, MPU6050_BAND_44_HZ
         };
-        IMUParams imuParams;
 };
 
 #endif

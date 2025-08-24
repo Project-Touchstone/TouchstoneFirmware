@@ -30,7 +30,7 @@ void DynamicConfig::addMagTracker(const I2CDeviceConfig config) {
     magTrackerConfigs.push_back(config);
 }
 
-void DynamicConfig::addIMU(const I2CDeviceConfig config) {
+void DynamicConfig::addIMU(const IMUConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     imuConfigs.push_back(config);
 }
@@ -104,12 +104,12 @@ DynamicConfig::I2CDeviceConfig DynamicConfig::getMagTracker(uint8_t id) const {
     return I2CDeviceConfig{};
 }
 
-DynamicConfig::I2CDeviceConfig DynamicConfig::getIMU(uint8_t id) const {
+DynamicConfig::IMUConfig DynamicConfig::getIMU(uint8_t id) const {
     std::lock_guard<std::mutex> lock(configMutex);
     if (id < imuConfigs.size()) {
         return imuConfigs[id];
     }
-    return I2CDeviceConfig{};
+    return IMUConfig{};
 }
 
 DynamicConfig::I2CDeviceConfig DynamicConfig::getServoDriver(uint8_t id) const {
@@ -150,6 +150,26 @@ bool DynamicConfig::beginI2CDevice(const I2CDeviceConfig config, I2CDevice& i2cD
         res = i2cDevice.begin(&i2cBuses[config.busId]);
     }
     return res;
+}
+
+bool DynamicConfig::beginIMU(const IMUConfig config, IMU& imu) {
+    // Sets IMU parameters
+    imu.setParameters(imuAccelRanges[config.accelMode], imuGyroRanges[config.gyroMode], imuFilterBands[config.filterMode]);
+    // Begins IMU
+    return beginI2CDevice(config, imu);
+}
+
+std::string DynamicConfig::describeBusChain(const BusChainConfig config) const {
+    std::lock_guard<std::mutex> lock(configMutex);
+    std::string result = " on bus ";
+    result = result + std::to_string(config.bus) + " with modules ";
+    for (uint8_t i = 0; i < config.moduleIds.size(); i++) {
+        result = result + std::to_string(config.moduleIds[i]);
+        if (i < config.moduleIds.size() - 1) {
+            result = result + ", ";
+        }
+    }
+    return result;
 }
 
 std::string DynamicConfig::describeI2CDevice(const I2CDeviceConfig config) const {

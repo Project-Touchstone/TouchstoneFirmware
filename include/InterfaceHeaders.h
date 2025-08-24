@@ -14,19 +14,19 @@ namespace InterfaceHeaders {
 	// Configures magnetic encoder (direct I2C)
 	#define CONFIG_MAG_ENCODER 0x12 // 1 byte (I2C bus), 0 byte response
 	// Configures mangetic encoder (on BusChain)
-	#define CONFIG_MAG_ENCODER_BC 0x13 // 2 bytes (1 byte BC id, 1 byte channel), 0 byte response
+	#define CONFIG_MAG_ENCODER_BC 0x13 // 2 bytes (BC id, channel), 0 byte response
 	// Configures magnetic tracker (direct I2C)
 	#define CONFIG_MAG_TRACKER 0x14 // 1 byte (I2C bus), 0 byte response
 	// Configures magnetic tracker (on BusChain)
-	#define CONFIG_MAG_TRACKER_BC 0x15 // 2 bytes (1 byte BC id, 1 byte channel), 0 byte response
+	#define CONFIG_MAG_TRACKER_BC 0x15 // 2 bytes (BC id, channel), 0 byte response
 	// Configures IMU (direct I2C)
-	#define CONFIG_IMU 0x16 // 1 byte (I2C bus), 0 byte response
+	#define CONFIG_IMU 0x16 // 4 bytes (I2C bus, accel mode, gyro mode, filter mode), 0 byte response
 	// Configures IMU (on BusChain)
-	#define CONFIG_IMU_BC 0x17 // 2 bytes (1 byte BC id, 1 byte channel), 0 byte response
+	#define CONFIG_IMU_BC 0x17 // 5 bytes (BC id, channel, accel mode, gyro mode, filter mode), 0 byte response
 	// Configures servo driver (direct I2C)
 	#define CONFIG_SERVO_DRIVER 0x18 // 1 byte (I2C bus), 0 byte response
 	// Configures servo driver (on BusChain)
-	#define CONFIG_SERVO_DRIVER_BC 0x19 // 2 bytes (1 byte BC id, 1 byte channel), 0 byte response
+	#define CONFIG_SERVO_DRIVER_BC 0x19 // 2 bytes (BC id, channel), 0 byte response
 	// Configures servo
 	#define CONFIG_SERVO 0x1A
 	// Configures FOC motor

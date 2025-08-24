@@ -4,7 +4,7 @@
 
 //Configuration imports
 #include "HydraFOCConfig.h"
-#include "../TestConfigMap.hpp"
+#include "../TestMapConfig.hpp"
 
 // Internal library imports
 #include "DynamicConfig.h"
