@@ -6,7 +6,7 @@ HydraFOCMotor::HydraFOCMotor(int pwmA, int pwmB, int pwmC, int enPin)
       enablePin(enPin),
       targetVelocity(0),
       targetPosition(0),
-      targetVoltage(0),
+      targetTorque(0),
       mode(VELOCITY)
 {
 }
@@ -34,9 +34,9 @@ void HydraFOCMotor::setPosition(float position) {
     motor.controller = MotionControlType::angle_openloop;
 }
 
-void HydraFOCMotor::setVoltage(float voltage) {
-    targetVoltage = voltage;
-    mode = VOLTAGE;
+void HydraFOCMotor::setTorque(float torque) {
+    targetTorque = torque;
+    mode = TORQUE;
     motor.controller = MotionControlType::torque;
 }
 
@@ -48,8 +48,8 @@ void HydraFOCMotor::update() {
         case POSITION:
             motor.move(targetPosition);
             break;
-        case VOLTAGE:
-            motor.move(targetVoltage);
+        case TORQUE:
+            motor.move(targetTorque);
             break;
     }
 }

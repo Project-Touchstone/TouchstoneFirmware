@@ -19,8 +19,8 @@ public:
     // Set target position (rad)
     void setPosition(float position);
 
-    // Set voltage (open loop)
-    void setVoltage(float voltage);
+    // Sets target torque (Nm)
+    void setTorque(float torque);
 
     // Update FOC loop (call in loop)
     void update();
@@ -37,8 +37,8 @@ private:
     int enablePin;
     float targetVelocity;
     float targetPosition;
-    float targetVoltage;
-    enum ControlMode { VELOCITY, POSITION, VOLTAGE } mode;
+    float targetTorque;
+    enum ControlMode { VELOCITY, POSITION, TORQUE } mode;
 };
 
 #endif

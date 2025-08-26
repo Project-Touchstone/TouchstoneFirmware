@@ -1,11 +1,11 @@
-#ifndef INTERFACE_REQUEST_LENGTHS
-#define INTERFACE_REQUEST_LENGTHS
+#ifndef INTERFACE_PACKET_LENGTHS
+#define INTERFACE_PACKET_LENGTHS
 
 #include <Arduino.h>
 #include <unordered_map>
 
 
-std::unordered_map<uint8_t, int16_t> lengthsByRequest = {
+std::unordered_map<uint8_t, int16_t> incomingByRequest = {
     { 1,  0 },
     { 16, 0 },
     { 17, -1 },

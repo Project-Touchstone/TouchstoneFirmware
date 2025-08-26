@@ -59,6 +59,8 @@ class DynamicConfig {
         uint8_t numIMUs() const;
         uint8_t numServos() const;
         uint8_t numServoDrivers() const;
+        uint8_t numFOCMotors() const;
+        uint8_t getSensorDataLength() const;
 
         BusChainConfig getBusChain(uint8_t id) const;
         I2CDeviceConfig getMagEncoder(uint8_t id) const;
@@ -109,6 +111,11 @@ class DynamicConfig {
         mpu6050_bandwidth_t imuFilterBands[4] = {
             MPU6050_BAND_260_HZ, MPU6050_BAND_184_HZ, MPU6050_BAND_94_HZ, MPU6050_BAND_44_HZ
         };
+
+        // Sensor data packet lengths
+        const uint8_t magEncoderLen = 2;
+        const uint8_t magTrackerLen = 6;
+        const uint8_t imuLen = 12;
 };
 
 #endif

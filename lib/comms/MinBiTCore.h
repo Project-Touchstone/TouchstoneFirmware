@@ -14,11 +14,6 @@
 
 class MinBiTCore {
     public:
-        enum class NodeType {
-            SERVER,
-            CLIENT
-        };
-
         enum class WriteMode {
             IMMEDIATE,
             PACKET
@@ -32,13 +27,13 @@ class MinBiTCore {
         class Request {
         public:
             enum class Status {
-                UNSENT,
-                WAITING,
-                FUFILLED,
+                INCOMING,
+                OUTGOING,
+                COMPLETE,
                 TIMEDOUT
             };
 
-            Request(uint8_t header);
+            Request(uint8_t header, Status status);
 
             void Start();
             void SetStatus(Status newStatus);
@@ -50,7 +45,10 @@ class MinBiTCore {
             uint8_t GetHeader() const;
             uint8_t GetResponseHeader();
             int GetResponseLength();
+            bool IsIncoming();
+            bool IsOutgoing();
             bool IsWaiting();
+            bool IsComplete();
             bool IsTimedOut();
 
             std::chrono::steady_clock::time_point GetSentTime();
@@ -79,13 +77,6 @@ class MinBiTCore {
         // Gets stream object
         std::shared_ptr<IStream> getStream();
 
-        // Sets node type (server or client)
-        void setNodeType(NodeType type);
-
-        // Gets whether node is client or server
-        bool isClient() const;
-        bool isServer() const;
-
         // Set writing mode
         void setWriteMode(WriteMode mode);
 
@@ -93,18 +84,19 @@ class MinBiTCore {
         void setRequestTimeout(uint16_t timeoutMs);
 
         // Loads packet length information
-        bool loadPacketLengthsByRequest(std::unordered_map<uint8_t, int16_t>* lengthsByRequest);
-        bool loadPacketLengthsByResponse(std::unordered_map<uint8_t, int16_t>* lengthsByResponse);
+        bool loadOutgoingByRequest(std::unordered_map<uint8_t, int16_t>* map);
+        bool loadOutgoingByResponse(std::unordered_map<uint8_t, int16_t>* map);
+        bool loadIncomingByRequest(std::unordered_map<uint8_t, int16_t>* map);
 
         // Writing functions
-        std::shared_ptr<MinBiTCore::Request> writeHeader(uint8_t header);
+        std::shared_ptr<MinBiTCore::Request> writeRequest(uint8_t header);
         void writeBytes(const uint8_t* buffer, std::size_t length);
         void writeByte(uint8_t value);
         void writeFloat(float value);
         // Writes a 16 bit integer
         void writeInt16(int16_t data);
         // Writes packet
-        void writePacket();
+        void sendAll();
 
         // Reading functions
         void fetchData();
@@ -122,32 +114,35 @@ class MinBiTCore {
         // Gets the expected length for a header, returns false if not found
         bool getExpectedPacketLength(std::shared_ptr<Request> request, int16_t& length) const;
         bool getPacketParameters(int16_t expectedLength, std::size_t& payloadLength, std::size_t& totalPacketLength);
-        bool getCurrentRequest(std::shared_ptr<Request>& request);
+        bool getOutgoingRequest(std::shared_ptr<Request>& request);
         bool isPacketPending();
         // Flushes the read buffer
         void flush();
         bool clearRequest();
         std::size_t getReadBufferSize();
         std::size_t getWriteBufferSize();
-        std::size_t getRequestQueueSize();
+        std::size_t getNumOutgoingRequests();
 
     private:
         std::string name;
         std::shared_ptr<IStream> stream;
         std::vector<uint8_t> readBuffer;
         std::vector<uint8_t> writeBuffer;
-        std::queue<std::shared_ptr<MinBiTCore::Request>> requestQueue;
         std::queue<std::shared_ptr<MinBiTCore::Request>> unsentRequests;
+        std::queue<std::shared_ptr<MinBiTCore::Request>> outgoingRequests;
+        // Current request being processed
+        std::shared_ptr<Request> currRequest;
+
         uint16_t requestTimeoutMs = 1000; // or make this configurable
         std::mutex dataMutex;
 
-        bool packetFlag = false;
-        // Packet lengths by request header
-        std::unordered_map<uint8_t, int16_t>* lengthsByRequest;
-        // Packet lengths by response header
-        std::unordered_map<uint8_t, int16_t>* lengthsByResponse;
+        // Outgoing packet lengths by request header
+        std::unordered_map<uint8_t, int16_t>* outgoingByRequest;
+        // Outgoing packet legnths by response header
+        std::unordered_map<uint8_t, int16_t>* outgoingByResponse;
+        // Incoming packet lengths by request header
+        std::unordered_map<uint8_t, int16_t>* incomingByRequest;
 
-        NodeType nodeType = NodeType::CLIENT; // Default to CLIENT
         WriteMode writeMode = WriteMode::IMMEDIATE;
 
         //Read handler
@@ -159,7 +154,7 @@ class MinBiTCore {
 
         // Processing loop
         void checkForTimeouts();
-        bool characterizePacket(std::shared_ptr<MinBiTCore::Request>& request, bool& variableLength, std::size_t payloadLength);
+        bool characterizePacket(bool& variableLength, std::size_t payloadLength);
 };
 
 template <typename T>

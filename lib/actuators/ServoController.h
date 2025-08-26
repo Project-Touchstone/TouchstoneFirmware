@@ -43,21 +43,11 @@ class ServoController : public I2CDevice {
         static const uint16_t deadband;
         // Desired resolution within deadband
         static const uint16_t deadbandRes;
+        // Length of PWM range
+        static const uint16_t pwmRangeLength;
         
-        // Start of PWM range for each servo
-        int16_t pwmStarts[MAX_SERVOS];
-        // End of PWM range for each servo
-		uint16_t pwmEnds[MAX_SERVOS];
-        // Base PWM value for each servo
-        uint16_t basePWMs[MAX_SERVOS];
-        // Critical count for each servo
-        int16_t criticalCounts[MAX_SERVOS];
-        // Number of pulses within meta pwm cycle
-        volatile uint8_t pulseCount = 0;
-        // Start time of pwm cycle
-        volatile uint64_t startTime = 0;
-        // Delay for I2C communication
-        uint16_t commsDelay = 100;
+        // PWM signal for each servo
+        int16_t pwmSignals[MAX_SERVOS];
 
         // Spinlock for RTOS
         portMUX_TYPE* spinlock;
@@ -68,8 +58,6 @@ class ServoController : public I2CDevice {
         bool begin(TwoWire* wire) override;
         void reset();
         void setSignal(uint8_t channel, float power);
-        void updatePWMTime();
-		void updatePWMCompute(uint8_t channel);
         void updatePWMDriver(uint8_t channel);
 };
 
