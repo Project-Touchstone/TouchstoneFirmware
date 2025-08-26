@@ -1,28 +1,27 @@
-#include "MinBiTSerialServer.h"
+#include "MinBiTSerialNode.h"
 
-MinBiTSerialServer::MinBiTSerialServer(std::string name)
+MinBiTSerialNode::MinBiTSerialNode(std::string name)
     : protocol(std::make_shared<MinBiTCore>(name, serialStream))
 {
-    protocol->setNodeType(MinBiTCore::NodeType::SERVER);
-    protocol->setWriteMode(MinBiTCore::WriteMode::PACKET);
+    protocol->setWriteMode(MinBiTCore::WriteMode::BULK);
     protocol->setRequestTimeout(1000);
 }
 
-MinBiTSerialServer::~MinBiTSerialServer() {
+MinBiTSerialNode::~MinBiTSerialNode() {
     end();
 }
 
-bool MinBiTSerialServer::begin(unsigned int baudRate) {
+bool MinBiTSerialNode::begin(unsigned int baudRate) {
     Serial.begin(baudRate);
     attachProtocol();
     return true;
 }
 
-void MinBiTSerialServer::setReadHandler(ReadHandler readHander) {
+void MinBiTSerialNode::setReadHandler(ReadHandler readHander) {
     this->readHandler = readHandler;
 }
 
-void MinBiTSerialServer::attachProtocol() {
+void MinBiTSerialNode::attachProtocol() {
     protocol->setReadHandler([this](std::shared_ptr<MinBiTCore::Request> request) {
         if (readHandler) {
             readHandler(protocol, request);
@@ -32,14 +31,14 @@ void MinBiTSerialServer::attachProtocol() {
     protocol->fetchData();
 }
 
-void MinBiTSerialServer::end() {
+void MinBiTSerialNode::end() {
     serialStream->close();
 }
 
-std::shared_ptr<MinBiTCore> MinBiTSerialServer::getProtocol() {
+std::shared_ptr<MinBiTCore> MinBiTSerialNode::getProtocol() {
     return protocol;
 }
 
-bool MinBiTSerialServer::isOpen() const {
+bool MinBiTSerialNode::isOpen() const {
     return serialStream && serialStream->isOpen();
 }

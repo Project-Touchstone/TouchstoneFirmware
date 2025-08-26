@@ -28,7 +28,7 @@
 //Internal library imports
 #include "BusChain.h"
 #include "MinBiTCore.h"
-#include "MinBiTSerialServer.h"
+#include "MinBiTSerialNode.h"
 #include "ServoController.h"
 #include "HydraFOCMotor.h"
 #include "MagSensor.h"
@@ -42,7 +42,7 @@ using Request = std::shared_ptr<MinBiTCore::Request>;
 DynamicConfig config;
 
 //Serial server object
-MinBiTSerialServer interface("Middleware Interface");
+MinBiTSerialNode interface("Middleware Interface");
 //Serial server protocol object
 std::shared_ptr<MinBiTCore> interfaceData;
 
@@ -172,12 +172,12 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			aliveFlag = true;
 			digitalWrite(LED_BUILTIN, HIGH);
 			// Sends acknowledgement
-			interfaceData->writeHeader(ACK);
-			interfaceData->writePacket();
+			interfaceData->writeRequest(ACK);
+			interfaceData->sendAll();
 			break;
 		case SENSOR_DATA:
 			// Sends affirmative response
-			interfaceData->writeHeader(ACK);
+			interfaceData->writeRequest(ACK);
 
 			// Sends sensor data length
 			interfaceData->writeByte(config.getSensorDataLength());
@@ -208,7 +208,7 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 				interfaceData->writeInt16(z);
 			}
 			// Sends packet
-			interfaceData->writePacket();
+			interfaceData->sendAll();
 			break;
 		case SERVO_SIGNAL:
 			// Reads servo id and signal
