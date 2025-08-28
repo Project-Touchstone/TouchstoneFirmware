@@ -168,30 +168,3 @@ bool DynamicConfig::beginIMU(const IMUConfig config, IMU& imu) {
     // Begins IMU
     return beginI2CDevice(config, imu);
 }
-
-std::string DynamicConfig::describeBusChain(const BusChainConfig config) const {
-    std::lock_guard<std::mutex> lock(configMutex);
-    std::string result = " on bus ";
-    result = result + std::to_string(config.bus) + " with modules ";
-    for (uint8_t i = 0; i < config.moduleIds.size(); i++) {
-        result = result + std::to_string(config.moduleIds[i]);
-        if (i < config.moduleIds.size() - 1) {
-            result = result + ", ";
-        }
-    }
-    return result;
-}
-
-std::string DynamicConfig::describeI2CDevice(const I2CDeviceConfig config) const {
-    std::lock_guard<std::mutex> lock(configMutex);
-    std::string busChainStr;
-    std::string channelStr;
-    if (config.onBusChain) {
-        busChainStr = "on BusChain";
-        channelStr = "channel " + std::to_string(config.channel);
-    } else {
-        busChainStr = "on direct bus";
-        channelStr = "";
-    }
-    return busChainStr + std::to_string(config.busId) + channelStr;
-}

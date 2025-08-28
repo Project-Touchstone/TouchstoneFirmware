@@ -73,8 +73,6 @@ class DynamicConfig {
         void beginBusChain(BusChainConfig config, BusChain& busChain);
         bool beginIMU(const IMUConfig config, IMU& imu);
         bool beginI2CDevice(const I2CDeviceConfig config, I2CDevice& i2cDevice);
-        std::string describeBusChain(const BusChainConfig config) const;
-        std::string describeI2CDevice(const I2CDeviceConfig config) const;
     
     private:
         // Mutex for thread safety
