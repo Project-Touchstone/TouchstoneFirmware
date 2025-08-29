@@ -81,6 +81,9 @@ TaskHandle_t commsHandle;
 // Whether serial connection is alive
 bool aliveFlag = false;
 
+// Whether configuration has occured
+bool configFlag = false;
+
 // The setup function runs once when you press reset or power on the board.
 void setup() {
 	//Configures built-in LED
@@ -124,7 +127,8 @@ void setup() {
 
 void TaskSensors(void *pvParameters) {
 	(void)pvParameters;
-	while (!aliveFlag) {
+	// Busy loops until connection is live and configuration is finished
+	while (!aliveFlag || !configFlag) {
 		vTaskDelay(1);
 	}
 	for (;;) {
@@ -160,6 +164,18 @@ void TaskServos(void *pvParameters) {
 	}
 }
 
+bool responseIfConfigured() {
+	// Sends affirmative response if configured
+	if (configFlag) {
+		interfaceData->writeByte(ACK);
+		return true;
+	} else {
+		interfaceData->writeByte(NACK);
+		interfaceData->sendAll();
+		return false;
+	}
+}
+
 void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request) {
 	// Ensures request did not time out
 	if (request->IsTimedOut())
@@ -169,15 +185,18 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 	//Reads serial packets
 	switch (request->GetHeader()) {
 		case PING:
-			aliveFlag = true;
-			digitalWrite(LED_BUILTIN, HIGH);
 			// Sends acknowledgement
 			interfaceData->writeRequest(ACK);
 			interfaceData->sendAll();
+
+			aliveFlag = true;
+			digitalWrite(LED_BUILTIN, HIGH);
 			break;
 		case SENSOR_DATA:
-			// Sends affirmative response
-			interfaceData->writeRequest(ACK);
+			// Sends affirmative response if configured
+			if (!responseIfConfigured()) {
+				break;
+			}
 
 			// Sends sensor data length
 			interfaceData->writeByte(config.getSensorDataLength());
@@ -211,6 +230,11 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			interfaceData->sendAll();
 			break;
 		case SERVO_SIGNAL:
+			// Sends affirmative response if configured
+			if (!responseIfConfigured()) {
+				break;
+			}
+
 			// Reads servo id and signal
 			uint8_t servoID = interfaceData->readByte();
 			int16_t val = interfaceData->readData<int16_t>();
@@ -228,6 +252,11 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			xQueueSend(servoQueue, &servoConfig, 0);
 			break;
 		case FOC_POSITION:
+			// Sends affirmative response if configured
+			if (!responseIfConfigured()) {
+				break;
+			}
+
 			// Reads motor id and position data
 			uint8_t motorId = interfaceData->readByte();
 			float pos = interfaceData->readData<float>();
@@ -236,6 +265,11 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			focMotors[motorId].setPosition(pos);
 			break;
 		case FOC_VELOCITY:
+			// Sends affirmative response if configured
+			if (!responseIfConfigured()) {
+				break;
+			}
+
 			// Reads motor id and velocity data
 			uint8_t motorId = interfaceData->readByte();
 			float vel = interfaceData->readData<float>();
@@ -244,6 +278,11 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			focMotors[motorId].setVelocity(vel);
 			break;
 		case FOC_TORQUE:
+			// Sends affirmative response if configured
+			if (!responseIfConfigured()) {
+				break;
+			}
+			
 			// Reads motor id and torque data
 			uint8_t motorId = interfaceData->readByte();
 			float torque = interfaceData->readData<float>();
@@ -251,8 +290,11 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Sets position target
 			focMotors[motorId].setTorque(torque);
 			break;
-		case CONFIG:
-			// Turns on and off configuration mode somehow?
+		case CONFIG_END:
+			// Configuration complete
+			interfaceData->writeByte(ACK);
+			interfaceData->sendAll();
+			configFlag = true;
 			break;
 		case CONFIG_BUSCHAIN: {
 			// Reads I2C bus
@@ -265,11 +307,16 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 				moduleIds.push_back(interfaceData->readByte());
 			}
 			// Adds configuration
-			config.addBusChain({i2cBus, moduleIds});
+			uint8_t id = config.addBusChain({i2cBus, moduleIds});
+			// Begins buschain
+			config.beginBusChain(id);
+			// Sends acknowledgement
+			interfaceData->writeByte(ACK);
+			interfaceData->sendAll();
 			break;
 		}
 		case CONFIG_MAG_ENCODER:
-		case CONFIG_MAG_ENCODER_BC:
+		case CONFIG_MAG_ENCODER_BC: {
 			// Reads bus id
 			uint8_t busId = interfaceData->readByte();
 			// Detemines whether it is on buschain or not
@@ -281,10 +328,24 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			}
 
 			// Adds configuration
-			config.addMagEncoder({onBusChain, busId, channel});
+			DynamicConfig::I2CDeviceConfig i2cConfig = {onBusChain, busId, channel};
+			config.addMagEncoder(i2cConfig);
+			// Begins new mag encoder
+			MagEncoder newMagEncoder = MagEncoder();
+			magEncoders.push_back(newMagEncoder);
+			if (config.beginI2CDevice(i2cConfig, newMagEncoder)) {
+				// Sends acknowledgement
+				interfaceData->writeByte(ACK);
+				interfaceData->sendAll();
+			} else {
+				// Sends non acknowledge
+				interfaceData->writeByte(NACK);
+				interfaceData->sendAll();
+			}
 			break;
+		}
 		case CONFIG_MAG_TRACKER:
-		case CONFIG_MAG_TRACKER_BC:
+		case CONFIG_MAG_TRACKER_BC: {
 			// Reads bus id
 			uint8_t busId = interfaceData->readByte();
 			// Detemines whether it is on buschain or not
@@ -296,10 +357,24 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			}
 
 			// Adds configuration
-			config.addMagTracker({onBusChain, busId, channel});
+			DynamicConfig::I2CDeviceConfig i2cConfig = {onBusChain, busId, channel};
+			config.addMagTracker(i2cConfig);
+			// Begins new mag encoder
+			MagSensor newMagTracker = MagSensor();
+			magTrackers.push_back(newMagTracker);
+			if (config.beginI2CDevice(i2cConfig, newMagTracker)) {
+				// Sends acknowledgement
+				interfaceData->writeByte(ACK);
+				interfaceData->sendAll();
+			} else {
+				// Sends non acknowledge
+				interfaceData->writeByte(NACK);
+				interfaceData->sendAll();
+			}
 			break;
+		}
 		case CONFIG_IMU:
-		case CONFIG_IMU_BC:
+		case CONFIG_IMU_BC: {
 			// Reads bus id
 			uint8_t busId = interfaceData->readByte();
 			// Detemines whether it is on buschain or not
@@ -316,10 +391,24 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			uint8_t filterMode = interfaceData->readByte();
 
 			// Adds configuration
-			config.addIMU({onBusChain, busId, channel, accelMode, gyroMode, filterMode});
+			DynamicConfig::IMUConfig imuConfig = {onBusChain, busId, channel, accelMode, gyroMode, filterMode};
+			uint8_t id = config.addIMU(imuConfig);
+			// Begins new imu
+			IMU newIMU = IMU();
+			imus.push_back(newIMU);
+			if (config.beginIMU(id, newIMU)) {
+				// Sends acknowledgement
+				interfaceData->writeByte(ACK);
+				interfaceData->sendAll();
+			} else {
+				// Sends non acknowledge
+				interfaceData->writeByte(NACK);
+				interfaceData->sendAll();
+			}
 			break;
+		}
 		case CONFIG_SERVO_DRIVER:
-		case CONFIG_SERVO_DRIVER_BC:
+		case CONFIG_SERVO_DRIVER_BC: {
 			// Reads bus id
 			uint8_t busId = interfaceData->readByte();
 			// Detemines whether it is on buschain or not
@@ -331,8 +420,22 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			}
 
 			// Adds configuration
-			config.addServoDriver({onBusChain, busId, channel});
+			DynamicConfig::I2CDeviceConfig i2cConfig = {onBusChain, busId, channel};
+			config.addServoDriver(i2cConfig);
+			// Begins new mag encoder
+			ServoController newServoDriver = ServoController();
+			servoDrivers.push_back(newServoDriver);
+			if (config.beginI2CDevice(i2cConfig, newServoDriver)) {
+				// Sends acknowledgement
+				interfaceData->writeByte(ACK);
+				interfaceData->sendAll();
+			} else {
+				// Sends non acknowledge
+				interfaceData->writeByte(NACK);
+				interfaceData->sendAll();
+			}
 			break;
+		}
 		case CONFIG_SERVO:
 			// Reads servo driver id and channel
 			uint8_t servoDriverId = interfaceData->readByte();
@@ -340,10 +443,18 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 
 			// Adds configuration
 			config.addServo({servoDriverId, channel});
+
+			// Sends acknowledgement
+			interfaceData->writeByte(ACK);
+			interfaceData->sendAll();
 			break;
 		case CONFIG_FOC_MOTOR:
 			// Reads FOC port
 			config.addFOCMotor({interfaceData->readByte()});
+
+			// Sends acknowledgement
+			interfaceData->writeByte(ACK);
+			interfaceData->sendAll();
 			break;
 	}
 }

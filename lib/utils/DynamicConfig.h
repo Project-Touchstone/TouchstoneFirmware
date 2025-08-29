@@ -45,13 +45,13 @@ class DynamicConfig {
         void setI2CBuses(TwoWire* buses);
         void setBusChains(BusChain* busChains);
 
-        void addBusChain(const BusChainConfig config);
-        void addMagEncoder(const I2CDeviceConfig config);
-        void addMagTracker(const I2CDeviceConfig config);
-        void addIMU(const IMUConfig config);
-        void addServoDriver(const I2CDeviceConfig config);
-        void addServo(const ServoConfig config);
-        void addFOCMotor(const FOCMotorConfig config);
+        std::size_t addBusChain(const BusChainConfig config);
+        std::size_t addMagEncoder(const I2CDeviceConfig config);
+        std::size_t addMagTracker(const I2CDeviceConfig config);
+        std::size_t addIMU(const IMUConfig config);
+        std::size_t addServoDriver(const I2CDeviceConfig config);
+        std::size_t addServo(const ServoConfig config);
+        std::size_t addFOCMotor(const FOCMotorConfig config);
 
         uint8_t numBusChains() const;
         uint8_t numMagEncoders() const;
@@ -70,8 +70,8 @@ class DynamicConfig {
         ServoConfig getServo(uint8_t id) const;
         FOCMotorConfig getFOCMotor(uint8_t id) const;
 
-        void beginBusChain(BusChainConfig config, BusChain& busChain);
-        bool beginIMU(const IMUConfig config, IMU& imu);
+        void beginBusChain(uint8_t id);
+        bool beginIMU(uint8_t id, IMU& imu);
         bool beginI2CDevice(const I2CDeviceConfig config, I2CDevice& i2cDevice);
     
     private:

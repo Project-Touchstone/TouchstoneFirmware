@@ -15,39 +15,46 @@ void DynamicConfig::setBusChains(BusChain* busChains) {
     this->busChains = busChains;
 }
 
-void DynamicConfig::addBusChain(const BusChainConfig config) {
+std::size_t DynamicConfig::addBusChain(const BusChainConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     busChainConfigs.push_back(config);
+    return busChainConfigs.size() - 1;
 }
 
-void DynamicConfig::addMagEncoder(const I2CDeviceConfig config) {
+std::size_t DynamicConfig::addMagEncoder(const I2CDeviceConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     magEncoderConfigs.push_back(config);
+    return magEncoderConfigs.size() - 1;
 }
 
-void DynamicConfig::addMagTracker(const I2CDeviceConfig config) {
+std::size_t DynamicConfig::addMagTracker(const I2CDeviceConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     magTrackerConfigs.push_back(config);
+    return magTrackerConfigs.size() - 1;
 }
 
-void DynamicConfig::addIMU(const IMUConfig config) {
+std::size_t DynamicConfig::addIMU(const IMUConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     imuConfigs.push_back(config);
+    return imuConfigs.size() - 1;
 }
 
-void DynamicConfig::addServoDriver(const I2CDeviceConfig config) {
+std::size_t DynamicConfig::addServoDriver(const I2CDeviceConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     servoDriverConfigs.push_back(config);
+    return servoDriverConfigs.size() - 1;
 }
 
-void DynamicConfig::addServo(const ServoConfig config) {
+std::size_t DynamicConfig::addServo(const ServoConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     servoConfigs.push_back(config);
+    return servoConfigs.size() - 1;
 }
 
-void DynamicConfig::addFOCMotor(const FOCMotorConfig config) {
+std::size_t DynamicConfig::addFOCMotor(const FOCMotorConfig config) {
     std::lock_guard<std::mutex> lock(configMutex);
     focMotorConfigs.push_back(config);
+    return focMotorConfigs.size() - 1;
 }
 
 uint8_t DynamicConfig::numBusChains() const  {
@@ -146,8 +153,10 @@ DynamicConfig::FOCMotorConfig DynamicConfig::getFOCMotor(uint8_t id) const {
     return FOCMotorConfig{};
 }
 
-void DynamicConfig::beginBusChain(BusChainConfig config, BusChain& busChain) {
+void DynamicConfig::beginBusChain(uint8_t id) {
     std::lock_guard<std::mutex> lock(configMutex);
+    BusChain busChain = busChains[id];
+    DynamicConfig::BusChainConfig config = getBusChain(id);
     busChain.begin(config.moduleIds.data(), &i2cBuses[config.bus]);
 }
 
@@ -162,7 +171,8 @@ bool DynamicConfig::beginI2CDevice(const I2CDeviceConfig config, I2CDevice& i2cD
     return res;
 }
 
-bool DynamicConfig::beginIMU(const IMUConfig config, IMU& imu) {
+bool DynamicConfig::beginIMU(uint8_t id, IMU& imu) {
+    DynamicConfig::IMUConfig config = getIMU(id);
     // Sets IMU parameters
     imu.setParameters(imuAccelRanges[config.accelMode], imuGyroRanges[config.gyroMode], imuFilterBands[config.filterMode]);
     // Begins IMU
