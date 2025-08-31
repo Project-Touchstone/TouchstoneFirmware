@@ -34,7 +34,7 @@ uint8_t CORE_1 = 1;
 //////////////////////////////////////////////////////////////////
 
 // Servo signal multiplier for deserialization
-const float servoSignalMultiplier = 1./32767.;
+const float servoSignalDeserialize = 1./32767.;
 
 ////////////////////////////////////////////////////////////////////
 // HydraFOC motor configuration

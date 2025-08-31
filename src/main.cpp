@@ -238,7 +238,7 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Reads servo id and signal
 			uint8_t servoID = interfaceData->readByte();
 			int16_t val = interfaceData->readData<int16_t>();
-			float signal = static_cast<float>(val)*servoSignalMultiplier;
+			float signal = static_cast<float>(val)*servoSignalDeserialize;
 
 			// Gets configuration
 			DynamicConfig::ServoConfig servoConfig = config.getServo(servoID);

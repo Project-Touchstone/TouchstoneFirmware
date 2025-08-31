@@ -21,9 +21,8 @@ std::unordered_map<uint8_t, int16_t> incomingByRequest = {
     { 27, 2 },
     { 32, 0 },
     { 48, 3 },
-    { 49, 5 },
-    { 50, 5 },
-    { 51, 5 }
+    { 59, 5 },
+    { 50, 5 }
 };
 
 #endif
