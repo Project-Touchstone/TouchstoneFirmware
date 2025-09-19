@@ -27,27 +27,37 @@ class MinBiTCore {
         class Request {
         public:
             enum class Status {
-                INCOMING,
-                OUTGOING,
+                WAITING,
+                CHARACTERIZED,
                 COMPLETE,
                 TIMEDOUT
             };
 
-            Request(uint8_t header, Status status);
+            enum class Type {
+                INCOMING,
+                OUTGOING
+            };
+
+            Request(uint8_t header, Type type);
 
             void Start();
             void SetStatus(Status newStatus);
             void SetResponseHeader(uint8_t responseHeader);
+            void SetExpectedLength(int16_t expectedLength);
             void SetPayloadLength(std::size_t payloadLength);
+            void SetTotalPacketLength(std::size_t totalPacketLength);
 
             Status GetStatus();
             int64_t GetId() const;
             uint8_t GetHeader() const;
             uint8_t GetResponseHeader();
-            int GetResponseLength();
+            int16_t GetExpectedLength();
+            std::size_t GetPayloadLength();
+            std::size_t GetTotalPacketLength();
             bool IsIncoming();
             bool IsOutgoing();
             bool IsWaiting();
+            bool IsCharacterized();
             bool IsComplete();
             bool IsTimedOut();
 
@@ -60,10 +70,13 @@ class MinBiTCore {
             int64_t id;
             uint8_t header;
             uint8_t responseHeader;
-            int payloadLength;
+            int16_t expectedLength;
+            std::size_t payloadLength;
+            std::size_t totalPacketLength;
             Status status;
+            Type type;
             std::chrono::steady_clock::time_point sentTime;
-            mutable std::mutex requestMutex;
+            std::mutex requestMutex;
         };
 
         using ReadHandler = std::function<void(std::shared_ptr<MinBiTCore::Request>)>;
@@ -111,16 +124,23 @@ class MinBiTCore {
 
         // Packet management
 
+        // Processing loop
+        std::shared_ptr<Request> getCurrentRequest();
+        bool characterizePacket();
         // Gets the expected length for a header, returns false if not found
         bool getExpectedPacketLength(std::shared_ptr<Request> request, int16_t& length) const;
         bool getPacketParameters(int16_t expectedLength, std::size_t& payloadLength, std::size_t& totalPacketLength);
         bool getOutgoingRequest(std::shared_ptr<Request>& request);
+        void checkForTimeouts();
+
         // Flushes the read buffer
         void flush();
+        void flushRequest();
         bool clearRequest();
         std::size_t getReadBufferSize();
         std::size_t getWriteBufferSize();
         std::size_t getNumOutgoingRequests();
+        std::size_t getReservedBytes();
 
     private:
         std::string name;
@@ -131,6 +151,8 @@ class MinBiTCore {
         std::queue<std::shared_ptr<MinBiTCore::Request>> outgoingRequests;
         // Current request being processed
         std::shared_ptr<Request> currRequest;
+        // Current bytes reserved for reading
+        std::size_t reservedBytes = 0;
 
         uint16_t requestTimeoutMs = 1000; // or make this configurable
         std::mutex dataMutex;
@@ -150,10 +172,6 @@ class MinBiTCore {
         // Buffer management
         void appendToReadBuffer(const uint8_t* data, std::size_t length);
         void appendToWriteBuffer(const uint8_t* data, std::size_t length);
-
-        // Processing loop
-        void checkForTimeouts();
-        bool characterizePacket(bool& variableLength);
 };
 
 template <typename T>

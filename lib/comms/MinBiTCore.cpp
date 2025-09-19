@@ -2,11 +2,14 @@
 
 std::atomic<int64_t> MinBiTCore::Request::nextId{ 1 };
 
-MinBiTCore::Request::Request(uint8_t header, MinBiTCore::Request::Status status)
+MinBiTCore::Request::Request(uint8_t header, Request::Type type)
     : header(header),
     responseHeader(0),
-    payloadLength(-1),
-    status(status),
+    expectedLength(-1),
+    payloadLength(0),
+    totalPacketLength(0),
+    status(Request::Status::WAITING),
+    type(type),
     id(nextId.fetch_add(1))
 {
 }
@@ -26,9 +29,19 @@ void MinBiTCore::Request::SetResponseHeader(uint8_t responseHeader) {
     this->responseHeader = responseHeader;
 }
 
+void MinBiTCore::Request::SetExpectedLength(int16_t expectedLength) {
+    std::lock_guard<std::mutex> lock(requestMutex);
+    this->expectedLength = expectedLength;
+}
+
 void MinBiTCore::Request::SetPayloadLength(std::size_t payloadLength) {
     std::lock_guard<std::mutex> lock(requestMutex);
     this->payloadLength = payloadLength;
+}
+
+void MinBiTCore::Request::SetTotalPacketLength(std::size_t totalPacketLength) {
+    std::lock_guard<std::mutex> lock(requestMutex);
+    this->totalPacketLength = totalPacketLength;
 }
 
 MinBiTCore::Request::Status MinBiTCore::Request::GetStatus() {
@@ -49,19 +62,29 @@ uint8_t MinBiTCore::Request::GetResponseHeader() {
     return responseHeader;
 }
 
-int MinBiTCore::Request::GetResponseLength() {
+int16_t MinBiTCore::Request::GetExpectedLength() {
+    std::lock_guard<std::mutex> lock(requestMutex);
+    return expectedLength;
+}
+
+std::size_t MinBiTCore::Request::GetPayloadLength() {
     std::lock_guard<std::mutex> lock(requestMutex);
     return payloadLength;
 }
 
+std::size_t MinBiTCore::Request::GetTotalPacketLength() {
+    std::lock_guard<std::mutex> lock(requestMutex);
+    return totalPacketLength;
+}
+
 bool MinBiTCore::Request::IsIncoming() {
     std::lock_guard<std::mutex> lock(requestMutex);
-    return status == Status::INCOMING;
+    return type == Type::INCOMING;
 }
 
 bool MinBiTCore::Request::IsOutgoing() {
     std::lock_guard<std::mutex> lock(requestMutex);
-    return status == Status::OUTGOING;
+    return type == Type::OUTGOING;
 }
 
 bool MinBiTCore::Request::IsComplete() {
@@ -70,7 +93,11 @@ bool MinBiTCore::Request::IsComplete() {
 }
 
 bool MinBiTCore::Request::IsWaiting() {
-    return IsIncoming() || IsOutgoing();
+    return status == Status::WAITING || status == Status::CHARACTERIZED;
+}
+
+bool MinBiTCore::Request::IsCharacterized() {
+    return status == Status::CHARACTERIZED;
 }
 
 bool MinBiTCore::Request::IsTimedOut() {
@@ -192,6 +219,11 @@ bool MinBiTCore::getPacketParameters(int16_t expectedLength, std::size_t& payloa
     return true;
 }
 
+std::shared_ptr<MinBiTCore::Request> MinBiTCore::getCurrentRequest() {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    return currRequest;
+}
+
 std::shared_ptr<MinBiTCore::Request> MinBiTCore::writeRequest(uint8_t header) {
     // Creates new outgoing request
     auto request = std::make_shared<Request>(header, Request::Status::OUTGOING);
@@ -280,65 +312,92 @@ void MinBiTCore::checkForTimeouts() {
     }
 }
 
-bool MinBiTCore::characterizePacket(bool& variableLength) {
-    // Sets default values
-    variableLength = false;
-    
-    // Peeks header
-    uint8_t receivedHeader = peekByte();
+bool MinBiTCore::characterizePacket() {
+    // If bytes in buffer are still reserved, wait
+    if (reservedBytes > 0) {
+        return false;
+	}
     // If request has not been created
     if (currRequest == nullptr) {
-        // Checks for outgoing request response header
-        if (getNumOutgoingRequests() > 0) {
-            auto it = outgoingByResponse->find(receivedHeader);
-            if (it != outgoingByResponse->end()) {
-                // Assigns to current outgoing request
-                getOutgoingRequest(currRequest);
-                // Sets reponse header
-                currRequest->SetResponseHeader(receivedHeader);
-            }
+        // Peeks header
+        uint8_t receivedHeader = peekByte();
+
+        // Checks for incoming request header
+        auto it = incomingByRequest->find(receivedHeader);
+        if (it != incomingByRequest->end()) {
+            // Creates new incoming request
+            currRequest = std::make_shared<Request>(receivedHeader, Request::Type::INCOMING);
+        }
+        else if (getNumOutgoingRequests() > 0) {
+            // Assigns to current outgoing request
+            getOutgoingRequest(currRequest);
+            // Sets reponse header
+            currRequest->SetResponseHeader(receivedHeader);
         }
         else {
-            //Otherwise create new incoming request
-            // Creates new incoming request
-            currRequest = std::make_shared<Request>(receivedHeader, MinBiTCore::Request::Status::INCOMING);
+            // Header is unknown
+            std::cerr << "(" + name + ") No packet found for received header " << int(receivedHeader) << std::endl;
+
+            clearRequest();
+            flush();
+            return false;
         }
+
+        // Determine expected response length for request
+        int16_t expectedLength = 0;
+        if (!getExpectedPacketLength(currRequest, expectedLength)) {
+            if (currRequest->IsOutgoing()) {
+                std::cerr << "(" + name + ") No response length found for outgoing request header " << int(currRequest->GetHeader()) << std::endl;
+            }
+            else {
+                std::cerr << "(" + name + ") No packet length found for incoming request header " << int(currRequest->GetHeader()) << std::endl;
+            }
+
+            clearRequest();
+            flush();
+            return false;
+        }
+        currRequest->SetExpectedLength(expectedLength);
     }
 
     // Only process requests that have not yet been fufilled
-    if (!currRequest->IsWaiting()) {
-        return false;
-    }
-
-    // Determine expected response length for request
-    int16_t expectedLength = 0;
-    if (!getExpectedPacketLength(currRequest, expectedLength)) {
-        if (currRequest->IsOutgoing()) {
-            std::cerr << "(" + name + ") No response length found for outgoing request header " << int(currRequest->GetHeader()) << std::endl;
-        }
-        else {
-            std::cerr << "(" + name + ") No packet length found for incoming request header " << int(currRequest->GetHeader()) << std::endl;
-        }
-        clearRequest();
-        flush();
+    if (currRequest->IsComplete()) {
         return false;
     }
 
     // Gets packet length parameters
-    std::size_t totalPacketLength;
-    std::size_t payloadLength;
-    if (!getPacketParameters(expectedLength, payloadLength, totalPacketLength)) {
-        // Waits until able to access all packet parameters
-        return false;
+    if (!currRequest->IsCharacterized()) {
+		std::size_t payloadLength = 0;
+		std::size_t totalPacketLength = 0;
+        if (!getPacketParameters(currRequest->GetExpectedLength(), payloadLength, totalPacketLength)) {
+            // Waits until able to access all packet parameters
+            return false;
+        }
+        else {
+            currRequest->SetPayloadLength(payloadLength);
+            currRequest->SetTotalPacketLength(totalPacketLength);
+			currRequest->SetStatus(Request::Status::CHARACTERIZED);
+        }
     }
 
     // Wait until the full packet is available
-    if (getReadBufferSize() < totalPacketLength) {
+    if (getReadBufferSize() < currRequest->GetTotalPacketLength()) {
         return false;
     }
-    // Set payload length
-    currRequest->SetPayloadLength(payloadLength);
-    variableLength = (expectedLength == -1);
+
+    // Now we have the full packet, so process it
+    readByte(); // Removes header
+
+    // If variable length, remove the length byte as well
+    if (currRequest->GetExpectedLength() == -1) {
+        readByte();
+    }
+
+    // Request is now complete
+    currRequest->SetStatus(Request::Status::COMPLETE);
+
+	// Adjust reserved bytes
+	reservedBytes += currRequest->GetPayloadLength();
     return true;
 }
 
@@ -353,27 +412,17 @@ void MinBiTCore::fetchData() {
     // Process packets only when enough data is available
     while (getReadBufferSize() > 0) {
         // Gets current request and characterizes it
-        bool variableLength;
-        if (!characterizePacket(variableLength)) {
+        if (!characterizePacket()) {
             break;
-        }
-
-        // Now we have the full packet, so process it
-        readByte(); // Removes header
-
-        // If variable length, remove the length byte as well
-        if (variableLength) {
-            readByte();
         }
 
         // Calls read handler if exists
         if (readHandler) {
             readHandler(currRequest);
-            // Clears request from queue
-            clearRequest();
         }
-        // Request is now complete
-        currRequest->SetStatus(Request::Status::COMPLETE);
+
+        // Clears request
+        clearRequest();
     }
 
     // Timeout check: remove outgoing requests that have timed out
@@ -425,7 +474,7 @@ bool MinBiTCore::clearRequest() {
             outgoingRequests.pop();
         }
         // Clears current request
-        currRequest = nullptr;
+        currRequest.reset();
 
         return true;
     }
@@ -448,6 +497,16 @@ void MinBiTCore::flush() {
     readBuffer.clear();
 }
 
+void MinBiTCore::flushRequest() {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    // Flushes reserved bytes from buffer
+    if (reservedBytes > readBuffer.size()) {
+        reservedBytes = readBuffer.size();
+    }
+    readBuffer.erase(readBuffer.begin(), readBuffer.begin() + reservedBytes);
+    reservedBytes = 0;
+}
+
 std::size_t MinBiTCore::getReadBufferSize() {
     // Get the size of the read buffer (thread-safe).
     std::lock_guard<std::mutex> lock(dataMutex); // Ensure thread-safe access
@@ -463,6 +522,11 @@ std::size_t MinBiTCore::getWriteBufferSize() {
 std::size_t MinBiTCore::getNumOutgoingRequests() {
     std::lock_guard<std::mutex> lock(dataMutex);
     return outgoingRequests.size();
+}
+
+std::size_t MinBiTCore::getReservedBytes() {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    return reservedBytes;
 }
 
 void MinBiTCore::appendToReadBuffer(const uint8_t* data, std::size_t length) {
