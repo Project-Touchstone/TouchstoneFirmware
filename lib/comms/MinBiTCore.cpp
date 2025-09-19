@@ -226,7 +226,7 @@ std::shared_ptr<MinBiTCore::Request> MinBiTCore::getCurrentRequest() {
 
 std::shared_ptr<MinBiTCore::Request> MinBiTCore::writeRequest(uint8_t header) {
     // Creates new outgoing request
-    auto request = std::make_shared<Request>(header, Request::Status::OUTGOING);
+    auto request = std::make_shared<Request>(header, Request::Type::OUTGOING);
     {
         // Adds to unsent requests
         std::lock_guard<std::mutex> lock(dataMutex);
@@ -495,16 +495,6 @@ void MinBiTCore::flush() {
     // Clear the read buffer
     std::lock_guard<std::mutex> lock(dataMutex);
     readBuffer.clear();
-}
-
-void MinBiTCore::flushRequest() {
-    std::lock_guard<std::mutex> lock(dataMutex);
-    // Flushes reserved bytes from buffer
-    if (reservedBytes > readBuffer.size()) {
-        reservedBytes = readBuffer.size();
-    }
-    readBuffer.erase(readBuffer.begin(), readBuffer.begin() + reservedBytes);
-    reservedBytes = 0;
 }
 
 std::size_t MinBiTCore::getReadBufferSize() {
