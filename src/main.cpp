@@ -3,10 +3,10 @@
 // This will include an hpp file for testing purposes
 // Be sure to comment out this line for production builds
 //////////////////////////////////////////////////////////////
-//#define INTEGRATION_TESTING
+#define INTEGRATION_TESTING
 
 #ifdef INTEGRATION_TESTING
-#include "../integration/blink.hpp" // Testing file to run
+#include "../integration/foc_motor_test.hpp" // Testing file to run
 #endif
 //////////////////////////////////////////////////////////////
 
@@ -67,6 +67,9 @@ void TaskSensors(void *pvParameters);
 void TaskServos(void *pvParameters);
 void TaskFOCMotors(void *pvParameters);
 void TaskComms(void *pvParameters);
+
+// Interface read handler
+void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request);
 
 // Queues for sending actuator commands
 typedef DynamicConfig::ServoConfig servo_t;
@@ -192,7 +195,7 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			aliveFlag = true;
 			digitalWrite(LED_BUILTIN, HIGH);
 			break;
-		case SENSOR_DATA:
+		case SENSOR_DATA: {
 			// Sends affirmative response if configured
 			if (!responseIfConfigured()) {
 				break;
@@ -229,7 +232,8 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Sends packet
 			interfaceData->sendAll();
 			break;
-		case SERVO_SIGNAL:
+		}
+		case SERVO_SIGNAL: {
 			// Sends affirmative response if configured
 			if (!responseIfConfigured()) {
 				break;
@@ -251,20 +255,8 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Adds servo to update queue
 			xQueueSend(servoQueue, &servoConfig, 0);
 			break;
-		case FOC_POSITION:
-			// Sends affirmative response if configured
-			if (!responseIfConfigured()) {
-				break;
-			}
-
-			// Reads motor id and position data
-			uint8_t motorId = interfaceData->readByte();
-			float pos = interfaceData->readData<float>();
-
-			// Sets position target
-			focMotors[motorId].setPosition(pos);
-			break;
-		case FOC_VELOCITY:
+		}
+		case FOC_VELOCITY: {
 			// Sends affirmative response if configured
 			if (!responseIfConfigured()) {
 				break;
@@ -277,7 +269,8 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Sets velocity target
 			focMotors[motorId].setVelocity(vel);
 			break;
-		case FOC_TORQUE:
+		}
+		case FOC_TORQUE: {
 			// Sends affirmative response if configured
 			if (!responseIfConfigured()) {
 				break;
@@ -290,12 +283,14 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Sets position target
 			focMotors[motorId].setTorque(torque);
 			break;
-		case CONFIG_END:
+		}
+		case CONFIG_END: {
 			// Configuration complete
 			interfaceData->writeByte(ACK);
 			interfaceData->sendAll();
 			configFlag = true;
 			break;
+		}
 		case CONFIG_BUSCHAIN: {
 			// Reads I2C bus
 			uint8_t i2cBus = interfaceData->readByte();
@@ -436,7 +431,7 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			}
 			break;
 		}
-		case CONFIG_SERVO:
+		case CONFIG_SERVO: {
 			// Reads servo driver id and channel
 			uint8_t servoDriverId = interfaceData->readByte();
 			uint8_t channel = interfaceData->readByte();
@@ -448,7 +443,8 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			interfaceData->writeByte(ACK);
 			interfaceData->sendAll();
 			break;
-		case CONFIG_FOC_MOTOR:
+		}
+		case CONFIG_FOC_MOTOR: {
 			// Reads FOC port
 			config.addFOCMotor({interfaceData->readByte()});
 
@@ -456,6 +452,7 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			interfaceData->writeByte(ACK);
 			interfaceData->sendAll();
 			break;
+		}
 	}
 }
 

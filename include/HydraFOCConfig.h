@@ -40,17 +40,14 @@ const float servoSignalDeserialize = 1./32767.;
 // HydraFOC motor configuration
 ////////////////////////////////////////////////////////////////////
 
-#define HYDRAFOC_ENABLE
-
 #define NUM_FOC_MOTORS 2
 
 // HydraFOC motor pins
-// Note: each motor has 3 pairs of pins, where the first is enable
-// and the second is which mosfet to turn on
+// Note: first 3 pins are pwm, second 3 are enable pins
 const uint8_t focMotorPins[NUM_FOC_MOTORS][6] =
 {
-    {3, 18, 9, 46, 11, 10}, // Motor 0
-    {47, 21, 45, 48, 36, 35} // Motor 1
+    {18, 46, 10, 3, 9, 11}, // Motor 0
+    {21, 48, 35, 47, 45, 36} // Motor 1
 };
 
 // Driver reset and sleep pins

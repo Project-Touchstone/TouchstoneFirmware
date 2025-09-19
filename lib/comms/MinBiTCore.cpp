@@ -124,15 +124,15 @@ void MinBiTCore::setRequestTimeout(uint16_t timeoutMs) {
     this->requestTimeoutMs = timeoutMs;
 }
 
-bool MinBiTCore::loadOutgoingByRequest(std::unordered_map<uint8_t, int16_t>* map) {
+void MinBiTCore::loadOutgoingByRequest(std::unordered_map<uint8_t, int16_t>* map) {
     this->outgoingByRequest = map;
 }
 
-bool MinBiTCore::loadOutgoingByResponse(std::unordered_map<uint8_t, int16_t>* map) {
+void MinBiTCore::loadOutgoingByResponse(std::unordered_map<uint8_t, int16_t>* map) {
     this->outgoingByResponse = map;
 }
 
-bool MinBiTCore::loadIncomingByRequest(std::unordered_map<uint8_t, int16_t>* map) {
+void MinBiTCore::loadIncomingByRequest(std::unordered_map<uint8_t, int16_t>* map) {
     this->incomingByRequest = map;
 }
 
@@ -147,7 +147,7 @@ bool MinBiTCore::getExpectedPacketLength(std::shared_ptr<Request> request, int16
         }
 
         // Otherwise searches by request header
-        auto it = outgoingByRequest->find(request->GetHeader());
+        it = outgoingByRequest->find(request->GetHeader());
         if (it != outgoingByRequest->end()) {
             length = it->second;
             return true;

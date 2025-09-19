@@ -6,16 +6,16 @@
 
 void setup() {
     // Initialize the built-in LED pin as an output
-    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(2, OUTPUT);
 }
 
 void loop() {
     // Turn the LED on
-    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(2, HIGH);
     // Wait for 1000 milliseconds (1 second)
     delay(1000);
     // Turn the LED off
-    digitalWrite(LED_BUILTIN, LOW); 
+    digitalWrite(2, LOW); 
     // Wait for 1000 milliseconds (1 second)
     delay(1000);
 }

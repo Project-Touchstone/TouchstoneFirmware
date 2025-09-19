@@ -1,9 +1,8 @@
 #include "HydraFOCMotor.h"
 
-HydraFOCMotor::HydraFOCMotor(int pwmA, int pwmB, int pwmC, int enPin)
-    : motor(7), // 7 pole pairs as example, adjust as needed
-      driver(pwmA, pwmB, pwmC, enPin),
-      enablePin(enPin),
+HydraFOCMotor::HydraFOCMotor(uint8_t pwmA, uint8_t pwmB, uint8_t pwmC, uint8_t enA, uint8_t enB, uint8_t enC)
+    : motor(11), // 7 pole pairs as example, adjust as needed
+      driver(pwmA, pwmB, pwmC, enA, enB, enC),
       targetVelocity(0),
       targetPosition(0),
       targetTorque(0),
@@ -12,14 +11,18 @@ HydraFOCMotor::HydraFOCMotor(int pwmA, int pwmB, int pwmC, int enPin)
 }
 
 void HydraFOCMotor::begin() {
-    driver.voltage_power_supply = 12; // Set supply voltage as needed
+    // pwm frequency to be used [Hz]
+    driver.pwm_frequency = 30000;
+    // power supply voltage [V]
+    driver.voltage_power_supply = 12;
+    // Max DC voltage allowed - default voltage_power_supply
+    driver.voltage_limit = 12;
+
     driver.init();
     motor.linkDriver(&driver);
     motor.controller = MotionControlType::velocity_openloop;
     motor.init();
-    motor.initFOC();
-    pinMode(enablePin, OUTPUT);
-    digitalWrite(enablePin, HIGH);
+    //motor.initFOC();
 }
 
 void HydraFOCMotor::setVelocity(float velocity) {

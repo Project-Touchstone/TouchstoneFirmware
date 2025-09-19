@@ -84,9 +84,9 @@ class MinBiTCore {
         void setRequestTimeout(uint16_t timeoutMs);
 
         // Loads packet length information
-        bool loadOutgoingByRequest(std::unordered_map<uint8_t, int16_t>* map);
-        bool loadOutgoingByResponse(std::unordered_map<uint8_t, int16_t>* map);
-        bool loadIncomingByRequest(std::unordered_map<uint8_t, int16_t>* map);
+        void loadOutgoingByRequest(std::unordered_map<uint8_t, int16_t>* map);
+        void loadOutgoingByResponse(std::unordered_map<uint8_t, int16_t>* map);
+        void loadIncomingByRequest(std::unordered_map<uint8_t, int16_t>* map);
 
         // Writing functions
         std::shared_ptr<MinBiTCore::Request> writeRequest(uint8_t header);

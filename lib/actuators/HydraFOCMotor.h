@@ -8,7 +8,7 @@
 class HydraFOCMotor {
 public:
     // Construct with motor and driver pins
-    HydraFOCMotor(int pwmA, int pwmB, int pwmC, int enPin);
+    HydraFOCMotor(uint8_t pwmA, uint8_t pwmB, uint8_t pwmC, uint8_t enA, uint8_t enB, uint8_t enC);
 
     // Initialize the motor and driver
     void begin();
@@ -34,7 +34,6 @@ public:
 private:
     BLDCMotor motor;
     BLDCDriver3PWM driver;
-    int enablePin;
     float targetVelocity;
     float targetPosition;
     float targetTorque;
