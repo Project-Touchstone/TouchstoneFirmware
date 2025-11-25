@@ -57,8 +57,8 @@ const uint8_t focMotorPins[NUM_FOC_MOTORS][6] =
 // Current sensing pins (2 phases per motor)
 const uint8_t focCurrentPins[NUM_FOC_MOTORS][2] =
 {
-    {7, 6}, // Motor 0
-    {17, 16} // Motor 1
+    {17, 16}, // Motor 0
+    {7, 6} // Motor 1
 };
 
 ////////////////////////////////////////////////////////////////////////////

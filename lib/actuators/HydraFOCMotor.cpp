@@ -16,7 +16,7 @@ void HydraFOCMotor::begin() {
     // power supply voltage [V]
     driver.voltage_power_supply = 12;
     // Max DC voltage allowed - default voltage_power_supply
-    driver.voltage_limit = 12;
+    driver.voltage_limit = 5.6;
 
     driver.init();
     motor.linkDriver(&driver);

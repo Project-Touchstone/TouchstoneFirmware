@@ -13,17 +13,14 @@ constexpr float MOTOR_KV = 100.0f;
 HydraFOCMotor motor(focMotorPins[0][0], focMotorPins[0][1], focMotorPins[0][2], focMotorPins[0][3], focMotorPins[0][4], focMotorPins[0][5]);
 
 void setup() {
+    Serial.begin(SERIAL_BAUD_RATE);
     // Configure driver pins
     pinMode(focDriverSleepPin, OUTPUT);
     pinMode(focDriverResetPin, OUTPUT);
     digitalWrite(focDriverSleepPin, HIGH); // Wake up driver
     digitalWrite(focDriverResetPin, HIGH); // Release reset
-
-    // Configure enable pins on motor A
-    for (uint8_t i = 0; i < 4; i+=2) {
-        pinMode(focMotorPins[0][i], OUTPUT);
-        digitalWrite(focMotorPins[0][i], HIGH); // Enable mosfet
-    }
+    pinMode(focCurrentPins[0][0], INPUT);
+    pinMode(focCurrentPins[0][1], INPUT);
 
     // Initialize HydraFOC motor
     motor.begin();
@@ -31,10 +28,16 @@ void setup() {
 
 void loop() {
     // Example: Set target velocity
-    motor.setVelocity(10.0f); // 10 rad/s
+    motor.setVelocity(1.0f); // 10 rad/s
 
     // Run FOC control loop
     motor.update();
+
+    // Prints current sensing readings
+    Serial.print("Current A: ");
+    Serial.print(analogRead(focCurrentPins[0][0]));
+    Serial.print(" | Current B: ");
+    Serial.println(analogRead(focCurrentPins[0][1]));
 }
 
 #endif // FOC_MOTOR_TEST_HPP
