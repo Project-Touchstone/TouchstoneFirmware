@@ -6,8 +6,8 @@ void SerialStream::write(const uint8_t* buffer, std::size_t length) {
     Serial.write(buffer, length);
 }
 
-void SerialStream::read(uint8_t* buffer, std::size_t length) {
-    Serial.readBytes(buffer, length);
+std::size_t SerialStream::read(uint8_t* buffer, std::size_t length) {
+    return Serial.readBytes(buffer, length);
 }
 
 uint8_t SerialStream::available() {
