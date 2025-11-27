@@ -295,20 +295,27 @@ void RUDPCore::updateData() {
                 break;
             }
 
-            // timed out waiting for expectedSeqNum. Advance to the smallest available
-            // sequence number (to make progress).
-            uint8_t minSeq = 0;
+            // timed out waiting for expectedSeqNum. Advance to the buffered
+            // sequence that is closest forward from expectedSeqNum (wraparound
+            // safe). Compute distance as unsigned subtraction so wraparound is
+            // handled correctly: dist = (uint8_t)(key - expectedSeqNum).
+            uint8_t bestKey = 0;
+            uint8_t bestDist = 0;
             bool found = false;
             for (const auto &p : incomingPackets) {
                 uint8_t key = p.first;
-                if (!found || key < minSeq) {
-                    minSeq = key;
+                // distance forward from expectedSeqNum (0 means equal)
+                uint8_t dist = static_cast<uint8_t>(key - expectedSeqNum);
+                if (dist == 0) continue; // would have matched earlier
+                if (!found || dist < bestDist) {
+                    bestDist = dist;
+                    bestKey = key;
                     found = true;
                 }
             }
             if (found) {
-                // advance expectedSeqNum to found sequence and loop to collect it
-                expectedSeqNum = minSeq;
+                // advance expectedSeqNum to the closest available sequence
+                expectedSeqNum = bestKey;
                 missingTimerActive = false;
                 continue;
             } else {
