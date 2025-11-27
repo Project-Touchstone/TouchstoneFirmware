@@ -108,6 +108,7 @@ void setup() {
 	interfaceData = interface.getProtocol();
 	// Sets interface data handler
 	interfaceData->setReadHandler(&interfaceReadHandler);
+	interfaceData->setReliabilityEnabled(true);
 
 	// Begins connection
 	interface.begin(SERIAL_BAUD_RATE);

@@ -96,6 +96,14 @@ class RUDPCore {
         // Fetches data from stream and processes packets
         void updateData();
 
+        // Configure missing-packet timeout (ms)
+        void setMissingPacketTimeout(uint32_t ms);
+
+        // Reliability control: when disabled, incoming packets are dispatched
+        // immediately as parsed (no ordering or timeout applied).
+        void setReliabilityEnabled(bool enabled);
+        bool isReliabilityEnabled() const;
+
         // Flushes all buffers
         void flush();
 
@@ -114,6 +122,17 @@ class RUDPCore {
 
         // Expected incoming packet sequence number
         uint8_t expectedSeqNum;
+        // Missing-packet timeout (milliseconds). If the next expected sequence
+        // does not arrive within this window, the core will advance to the
+        // next available sequence to avoid blocking forever.
+        uint32_t missingPacketTimeoutMs;
+
+        // Timestamp when we started waiting for the next expected sequence.
+        std::chrono::steady_clock::time_point missingSince;
+        bool missingTimerActive;
+        // When true the core enforces ordering and timeouts; when false packets
+        // are dispatched immediately as they are parsed.
+        bool reliabilityEnabled;
 
         // Current incoming packet temporary fields (used by characterizePacket)
         uint8_t currSeqNum = 0;
@@ -129,7 +148,7 @@ class RUDPCore {
         // Triggers handlers based on packet
         void callHandlers(std::shared_ptr<Packet> pkt);
 
-        std::mutex dataMutex;
+        mutable std::mutex dataMutex;
 
         //Read handler (global)
         ReadHandler readHandler;

@@ -1,7 +1,9 @@
 #include "RUDPSerialNode.h"
 
 RUDPSerialNode::RUDPSerialNode(std::string name)
-    : protocol(std::make_shared<RUDPCore>(name)) {}
+    : protocol(std::make_shared<RUDPCore>(name)) {
+        protocol->setMissingPacketTimeout(10);
+}
 
 RUDPSerialNode::~RUDPSerialNode() {
     end();

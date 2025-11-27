@@ -103,7 +103,14 @@ int16_t RUDPCore::Packet::readInt16() {
 
 /// RUDPCore implementation
 
-RUDPCore::RUDPCore(std::string name) : name(std::move(name)), stream(nullptr) {}
+RUDPCore::RUDPCore(std::string name)
+        : name(std::move(name)), stream(nullptr), nextSeqNum(0), expectedSeqNum(0),
+            missingPacketTimeoutMs(100), missingSince(), missingTimerActive(false)
+{
+        // reliability enabled by default
+        std::lock_guard<std::mutex> lock(dataMutex);
+        reliabilityEnabled = true;
+}
 
 RUDPCore::~RUDPCore() {
     flush();
@@ -158,6 +165,28 @@ RUDPCore::Packet RUDPCore::createPacket(uint8_t header) {
     return Packet(seq, header);
 }
 
+void RUDPCore::setMissingPacketTimeout(uint32_t ms) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    missingPacketTimeoutMs = ms;
+}
+
+void RUDPCore::setReliabilityEnabled(bool enabled) {
+    {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        reliabilityEnabled = enabled;
+        // when turning off reliability, reset missing tracker so parser doesn't
+        // immediately advance sequences based on old state
+        if (!enabled) {
+            missingTimerActive = false;
+        }
+    }
+}
+
+bool RUDPCore::isReliabilityEnabled() const {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    return reliabilityEnabled;
+}
+
 void RUDPCore::holdPacket(const Packet& packet) {
     std::vector<uint8_t> bytes = packet.toBytes();
     {
@@ -201,42 +230,104 @@ void RUDPCore::updateData() {
         }
     }
 
-    // Process complete packets in readBuffer
+    // Process complete packets in readBuffer. Depending on reliabilityEnabled
+    // we either buffer by sequence (reliable) or dispatch immediately
+    std::vector<std::shared_ptr<Packet>> dispatch;
     while (true) {
         std::shared_ptr<Packet> pkt;
         {
             std::lock_guard<std::mutex> lock(dataMutex);
             if (!characterizePacket()) break;
             // we have a full packet in readBuffer; construct it
-        
+
             std::vector<uint8_t> payload;
-            payload.insert(payload.end(), readBuffer.begin() + 3, readBuffer.begin() + 3 + currPayloadLen);
+            if (currPayloadLen)
+                payload.insert(payload.end(), readBuffer.begin() + 3, readBuffer.begin() + 3 + currPayloadLen);
             pkt = std::make_shared<Packet>(currSeqNum, currHeader, payload);
 
             // erase consumed bytes
             readBuffer.erase(readBuffer.begin(), readBuffer.begin() + 3 + currPayloadLen);
-        }
 
-        // Check if the packet is in order
-        if (currSeqNum == expectedSeqNum) {
-            //Send packet to handlers
-            callHandlers(pkt);
-
-            expectedSeqNum++;
-
-            //Check for waiting out of order packets
-            while (incomingPackets.find(expectedSeqNum) != incomingPackets.end()) {
-                // Send packet to handlers
-                callHandlers(incomingPackets[expectedSeqNum]);
-                // Remove out of order packet
-                incomingPackets.erase(expectedSeqNum);
-                
-                expectedSeqNum++;
+            // If reliability disabled, collect for immediate dispatch; otherwise buffer
+            if (!reliabilityEnabled) {
+                dispatch.push_back(pkt);
+            } else {
+                incomingPackets[currSeqNum] = pkt;
             }
-        } else {
-            // Packet is out of order, add to dictionary for later processing
-            incomingPackets[currSeqNum] = pkt;
         }
+    }
+
+    // Process ordered packets from incomingPackets. If the expected packet
+    // doesn't arrive within the configured timeout, advance to the next
+    // available sequence to avoid blocking forever.
+    if (reliabilityEnabled) {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        // Keep processing while there's a packet matching expectedSeqNum.
+        while (true) {
+            auto it = incomingPackets.find(expectedSeqNum);
+            if (it != incomingPackets.end()) {
+                // move packet to dispatch list and remove from buffer
+                dispatch.push_back(it->second);
+                incomingPackets.erase(it);
+                expectedSeqNum++;
+                missingTimerActive = false;
+                continue;
+            }
+
+            // No packet with expectedSeqNum currently available
+            if (incomingPackets.empty()) {
+                // nothing to do, reset timer
+                missingTimerActive = false;
+                break;
+            }
+
+            // There are packets buffered but not the one we expect. Start timer if not started
+            auto now = std::chrono::steady_clock::now();
+            if (!missingTimerActive) {
+                missingSince = now;
+                missingTimerActive = true;
+                break; // give more time for missing packet to arrive
+            }
+
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - missingSince).count();
+            if (elapsed < static_cast<int64_t>(missingPacketTimeoutMs)) {
+                // not timed out yet
+                break;
+            }
+
+            // timed out waiting for expectedSeqNum. Advance to the smallest available
+            // sequence number (to make progress).
+            uint8_t minSeq = 0;
+            bool found = false;
+            for (const auto &p : incomingPackets) {
+                uint8_t key = p.first;
+                if (!found || key < minSeq) {
+                    minSeq = key;
+                    found = true;
+                }
+            }
+            if (found) {
+                // advance expectedSeqNum to found sequence and loop to collect it
+                expectedSeqNum = minSeq;
+                missingTimerActive = false;
+                continue;
+            } else {
+                // no suitable packet to advance to
+                break;
+            }
+        }
+    } else {
+        // If any incoming packets are buffered move to dispatch vector
+        std::lock_guard<std::mutex> lock(dataMutex);
+        for (auto &p : incomingPackets) {
+            dispatch.push_back(p.second);
+            incomingPackets.erase(p.first);
+        }
+    }
+
+    // Dispatch collected in-order packets or immediate packets
+    for (auto &p : dispatch) {
+        callHandlers(p);
     }
 
     // Sends any data in write buffer if stream available
