@@ -7,7 +7,7 @@
 using namespace std::chrono_literals;
 
 /// Packet implementation
-
+RUDPCore::Packet::Packet() : sequenceNum(0), header(0), payloadLength(0), payload(), readPos(0) {}
 RUDPCore::Packet::Packet(uint8_t sequenceNum, uint8_t header)
     : sequenceNum(sequenceNum), header(header), payloadLength(0), payload(), readPos(0) {}
 
@@ -34,7 +34,7 @@ uint8_t RUDPCore::Packet::getHeader() const {
     return header;
 }
 
-std::size_t RUDPCore::Packet::GetPayloadLength() const {
+std::size_t RUDPCore::Packet::getPayloadLength() const {
     return payloadLength;
 }
 

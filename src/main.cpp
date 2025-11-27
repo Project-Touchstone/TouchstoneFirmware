@@ -3,7 +3,7 @@
 // This will include an hpp file for testing purposes
 // Be sure to comment out this line for production builds
 //////////////////////////////////////////////////////////////
-#define INTEGRATION_TESTING
+//#define INTEGRATION_TESTING
 
 #ifdef INTEGRATION_TESTING
 #include "../integration/foc_motor_test.hpp" // Testing file to run
@@ -22,13 +22,12 @@
 //Configuration imports
 #include "HydraFOCConfig.h"
 #include "InterfaceHeaders.h"
-#include "InterfacePacketLengths.hpp"
 #include "DynamicConfig.h"
 
 //Internal library imports
 #include "BusChain.h"
-#include "MinBiTCore.h"
-#include "MinBiTSerialNode.h"
+#include "RUDPCore.h"
+#include "RUDPSerialNode.h"
 #include "ServoController.h"
 #include "HydraFOCMotor.h"
 #include "MagSensor.h"
@@ -36,15 +35,15 @@
 #include "IMU.h"
 
 using namespace InterfaceHeaders;
-using Request = std::shared_ptr<MinBiTCore::Request>;
+using Packet = std::shared_ptr<RUDPCore::Packet>;
 
 //Dynamic configuration object
 DynamicConfig config;
 
-//Serial server object
-MinBiTSerialNode interface("Middleware Interface");
+//Serial node object
+RUDPSerialNode interface("Middleware Interface");
 //Serial server protocol object
-std::shared_ptr<MinBiTCore> interfaceData;
+std::shared_ptr<RUDPCore> interfaceData;
 
 //TwoWire objects
 TwoWire I2CBuses[2] = {TwoWire(0), TwoWire(1)};
@@ -65,11 +64,10 @@ std::vector<HydraFOCMotor> focMotors;
 // Task function prototypes
 void TaskSensors(void *pvParameters);
 void TaskServos(void *pvParameters);
-void TaskFOCMotors(void *pvParameters);
 void TaskComms(void *pvParameters);
 
 // Interface read handler
-void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request);
+void interfaceReadHandler(Packet packet);
 
 // Queues for sending actuator commands
 typedef DynamicConfig::ServoConfig servo_t;
@@ -106,12 +104,10 @@ void setup() {
 	config.setI2CBuses(I2CBuses);
     config.setBusChains(busChains);
 
-	// Sets interface data handler
-	interface.setReadHandler(&interfaceReadHandler);
 	// Gets data protocol
 	interfaceData = interface.getProtocol();
-	// Loads protocol info
-	interfaceData->loadIncomingByRequest(&incomingByRequest);
+	// Sets interface data handler
+	interfaceData->setReadHandler(&interfaceReadHandler);
 
 	// Begins connection
 	interface.begin(SERIAL_BAUD_RATE);
@@ -119,9 +115,9 @@ void setup() {
 	// RTOS task initialization
 	servoQueue = xQueueCreate(config.numServos(), sizeof(servo_t));
 
-	xTaskCreatePinnedToCore(TaskSensors, "Sensor Updates", 2048, NULL, 3, &sensorsHandle, CORE_1);
-	xTaskCreatePinnedToCore(TaskServos, "Servo Updates", 2048, NULL, 4, &servosHandle, CORE_0);
-	xTaskCreatePinnedToCore(TaskComms, "Communications", 2048, NULL, 5, &commsHandle, CORE_0);
+	xTaskCreatePinnedToCore(TaskSensors, "Sensor Updates", 2048, NULL, 1, &sensorsHandle, CORE_1);
+	xTaskCreatePinnedToCore(TaskServos, "Servo Updates", 2048, NULL, 2, &servosHandle, CORE_0);
+	xTaskCreatePinnedToCore(TaskComms, "Communications", 2048, NULL, 1, &commsHandle, CORE_0);
 }
 
 /*--------------------------------------------------*/
@@ -167,81 +163,85 @@ void TaskServos(void *pvParameters) {
 	}
 }
 
-bool responseIfConfigured() {
-	// Sends affirmative response if configured
-	if (configFlag) {
-		interfaceData->writeByte(ACK);
-		return true;
-	} else {
-		interfaceData->writeByte(NACK);
-		interfaceData->sendAll();
-		return false;
+void TaskComms(void *pvParameters) {
+	(void)pvParameters;
+	for (;;) {
+		// Updates interface data
+		interfaceData->updateData();
 	}
 }
 
-void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request) {
-	// Ensures request did not time out
-	if (request->IsTimedOut())
-	{
-		return;
-	}
+void interfaceReadHandler(Packet packet) {
 	//Reads serial packets
-	switch (request->GetHeader()) {
-		case PING:
+	switch (packet->getHeader()) {
+		case PING: {
 			// Sends acknowledgement
-			interfaceData->writeRequest(ACK);
-			interfaceData->sendAll();
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			pkt.writeByte(ACK);
+			interfaceData->sendPacket(pkt);
 
 			aliveFlag = true;
 			digitalWrite(LED_BUILTIN, HIGH);
 			break;
+		}
 		case SENSOR_DATA: {
 			// Sends affirmative response if configured
-			if (!responseIfConfigured()) {
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			if (configFlag) {
+				pkt.writeByte(ACK);
+			} else {
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 				break;
 			}
 
 			// Sends sensor data length
-			interfaceData->writeByte(config.getSensorDataLength());
+			pkt.writeByte(config.getSensorDataLength());
 
 			// Sends magnetic encoder data
 			for (uint8_t i = 0; i < config.numMagEncoders(); i++) {
 				// Sends sensor data
-				interfaceData->writeInt16(magEncoders[i].getRawAngle());
+				pkt.writeInt16(magEncoders[i].getRawAngle());
 			}
 			// Sends magnetic tracker data
 			for (uint8_t i = 0; i < 2; i++) {
 				//Sends tracker data
-				interfaceData->writeInt16(magTrackers[i].rawX());
-				interfaceData->writeInt16(magTrackers[i].rawY());
-				interfaceData->writeInt16(magTrackers[i].rawZ());
+				pkt.writeInt16(magTrackers[i].rawX());
+				pkt.writeInt16(magTrackers[i].rawY());
+				pkt.writeInt16(magTrackers[i].rawZ());
 			}
 			// Sends imu data
 			for (uint8_t i = 0; i < config.numIMUs(); i++) {
 				//Sends imu data
 				int16_t x, y, z;
 				imus[i].getRawAccel(&x, &y, &z);
-				interfaceData->writeInt16(x);
-				interfaceData->writeInt16(y);
-				interfaceData->writeInt16(z);
+				pkt.writeInt16(x);
+				pkt.writeInt16(y);
+				pkt.writeInt16(z);
 				imus[i].getRawGyro(&x, &y, &z);
-				interfaceData->writeInt16(x);
-				interfaceData->writeInt16(y);
-				interfaceData->writeInt16(z);
+				pkt.writeInt16(x);
+				pkt.writeInt16(y);
+				pkt.writeInt16(z);
 			}
 			// Sends packet
-			interfaceData->sendAll();
+			interfaceData->sendPacket(pkt);
 			break;
 		}
 		case SERVO_SIGNAL: {
 			// Sends affirmative response if configured
-			if (!responseIfConfigured()) {
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			if (configFlag) {
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
+			} else {
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 				break;
 			}
 
 			// Reads servo id and signal
-			uint8_t servoID = interfaceData->readByte();
-			int16_t val = interfaceData->readData<int16_t>();
+			uint8_t servoID = packet->readByte();
+			int16_t val = packet->readData<int16_t>();
 			float signal = static_cast<float>(val)*servoSignalDeserialize;
 
 			// Gets configuration
@@ -258,13 +258,19 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 		}
 		case FOC_VELOCITY: {
 			// Sends affirmative response if configured
-			if (!responseIfConfigured()) {
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			if (configFlag) {
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
+			} else {
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 				break;
 			}
 
 			// Reads motor id and velocity data
-			uint8_t motorId = interfaceData->readByte();
-			float vel = interfaceData->readData<float>();
+			uint8_t motorId = packet->readByte();
+			float vel = packet->readData<float>();
 
 			// Sets velocity target
 			focMotors[motorId].setVelocity(vel);
@@ -272,54 +278,63 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 		}
 		case FOC_TORQUE: {
 			// Sends affirmative response if configured
-			if (!responseIfConfigured()) {
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			if (configFlag) {
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
+			} else {
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 				break;
 			}
 			
 			// Reads motor id and torque data
-			uint8_t motorId = interfaceData->readByte();
-			float torque = interfaceData->readData<float>();
+			uint8_t motorId = packet->readByte();
+			float torque = packet->readData<float>();
 
 			// Sets position target
 			focMotors[motorId].setTorque(torque);
 			break;
 		}
 		case CONFIG_END: {
+			// Sends acknowledgement
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			pkt.writeByte(ACK);
+			interfaceData->sendPacket(pkt);
 			// Configuration complete
-			interfaceData->writeByte(ACK);
-			interfaceData->sendAll();
 			configFlag = true;
 			break;
 		}
 		case CONFIG_BUSCHAIN: {
 			// Reads I2C bus
-			uint8_t i2cBus = interfaceData->readByte();
+			uint8_t i2cBus = packet->readByte();
 			// Gets number of modules based on response length
-			uint8_t numModules = request->GetResponseLength() - 1;
+			uint8_t numModules = packet->getPayloadLength();
 			// Adds module ids to vector
 			std::vector<uint8_t> moduleIds;
 			for (uint8_t i = 0; i < numModules; i++) {
-				moduleIds.push_back(interfaceData->readByte());
+				moduleIds.push_back(packet->readByte());
 			}
 			// Adds configuration
 			uint8_t id = config.addBusChain({i2cBus, moduleIds});
 			// Begins buschain
 			config.beginBusChain(id);
 			// Sends acknowledgement
-			interfaceData->writeByte(ACK);
-			interfaceData->sendAll();
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			pkt.writeByte(ACK);
+			interfaceData->sendPacket(pkt);
 			break;
 		}
 		case CONFIG_MAG_ENCODER:
 		case CONFIG_MAG_ENCODER_BC: {
 			// Reads bus id
-			uint8_t busId = interfaceData->readByte();
+			uint8_t busId = packet->readByte();
 			// Detemines whether it is on buschain or not
 			bool onBusChain = false;
 			uint8_t channel = 0;
-			if (request->GetHeader() == CONFIG_MAG_ENCODER_BC) {
+			if (packet->getHeader() == CONFIG_MAG_ENCODER_BC) {
 				onBusChain = true;
-				channel = interfaceData->readByte();
+				channel = packet->readByte();
 			}
 
 			// Adds configuration
@@ -328,27 +343,29 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Begins new mag encoder
 			MagEncoder newMagEncoder = MagEncoder();
 			magEncoders.push_back(newMagEncoder);
+
+			auto pkt = interfaceData->createPacket(packet->getHeader());
 			if (config.beginI2CDevice(i2cConfig, newMagEncoder)) {
 				// Sends acknowledgement
-				interfaceData->writeByte(ACK);
-				interfaceData->sendAll();
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
 			} else {
 				// Sends non acknowledge
-				interfaceData->writeByte(NACK);
-				interfaceData->sendAll();
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 			}
 			break;
 		}
 		case CONFIG_MAG_TRACKER:
 		case CONFIG_MAG_TRACKER_BC: {
 			// Reads bus id
-			uint8_t busId = interfaceData->readByte();
+			uint8_t busId = packet->readByte();
 			// Detemines whether it is on buschain or not
 			bool onBusChain = false;
 			uint8_t channel = 0;
-			if (request->GetHeader() == CONFIG_MAG_TRACKER_BC) {
+			if (packet->getHeader() == CONFIG_MAG_TRACKER_BC) {
 				onBusChain = true;
-				channel = interfaceData->readByte();
+				channel = packet->readByte();
 			}
 
 			// Adds configuration
@@ -357,33 +374,35 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Begins new mag encoder
 			MagSensor newMagTracker = MagSensor();
 			magTrackers.push_back(newMagTracker);
+
+			auto pkt = interfaceData->createPacket(packet->getHeader());
 			if (config.beginI2CDevice(i2cConfig, newMagTracker)) {
 				// Sends acknowledgement
-				interfaceData->writeByte(ACK);
-				interfaceData->sendAll();
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
 			} else {
 				// Sends non acknowledge
-				interfaceData->writeByte(NACK);
-				interfaceData->sendAll();
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 			}
 			break;
 		}
 		case CONFIG_IMU:
 		case CONFIG_IMU_BC: {
 			// Reads bus id
-			uint8_t busId = interfaceData->readByte();
+			uint8_t busId = packet->readByte();
 			// Detemines whether it is on buschain or not
 			bool onBusChain = false;
 			uint8_t channel = 0;
-			if (request->GetHeader() == CONFIG_MAG_ENCODER_BC) {
+			if (packet->getHeader() == CONFIG_MAG_ENCODER_BC) {
 				onBusChain = true;
-				channel = interfaceData->readByte();
+				channel = packet->readByte();
 			}
 
 			// Gets IMU-specific parameters
-			uint8_t accelMode = interfaceData->readByte();
-			uint8_t gyroMode = interfaceData->readByte();
-			uint8_t filterMode = interfaceData->readByte();
+			uint8_t accelMode = packet->readByte();
+			uint8_t gyroMode = packet->readByte();
+			uint8_t filterMode = packet->readByte();
 
 			// Adds configuration
 			DynamicConfig::IMUConfig imuConfig = {onBusChain, busId, channel, accelMode, gyroMode, filterMode};
@@ -391,27 +410,29 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Begins new imu
 			IMU newIMU = IMU();
 			imus.push_back(newIMU);
+
+			auto pkt = interfaceData->createPacket(packet->getHeader());
 			if (config.beginIMU(id, newIMU)) {
 				// Sends acknowledgement
-				interfaceData->writeByte(ACK);
-				interfaceData->sendAll();
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
 			} else {
 				// Sends non acknowledge
-				interfaceData->writeByte(NACK);
-				interfaceData->sendAll();
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 			}
 			break;
 		}
 		case CONFIG_SERVO_DRIVER:
 		case CONFIG_SERVO_DRIVER_BC: {
 			// Reads bus id
-			uint8_t busId = interfaceData->readByte();
+			uint8_t busId = packet->readByte();
 			// Detemines whether it is on buschain or not
 			bool onBusChain = false;
 			uint8_t channel = 0;
-			if (request->GetHeader() == CONFIG_SERVO_DRIVER_BC) {
+			if (packet->getHeader() == CONFIG_SERVO_DRIVER_BC) {
 				onBusChain = true;
-				channel = interfaceData->readByte();
+				channel = packet->readByte();
 			}
 
 			// Adds configuration
@@ -420,37 +441,41 @@ void interfaceReadHandler(std::shared_ptr<MinBiTCore> protocol, Request request)
 			// Begins new mag encoder
 			ServoController newServoDriver = ServoController();
 			servoDrivers.push_back(newServoDriver);
+
+			auto pkt = interfaceData->createPacket(packet->getHeader());
 			if (config.beginI2CDevice(i2cConfig, newServoDriver)) {
 				// Sends acknowledgement
-				interfaceData->writeByte(ACK);
-				interfaceData->sendAll();
+				pkt.writeByte(ACK);
+				interfaceData->sendPacket(pkt);
 			} else {
 				// Sends non acknowledge
-				interfaceData->writeByte(NACK);
-				interfaceData->sendAll();
+				pkt.writeByte(NACK);
+				interfaceData->sendPacket(pkt);
 			}
 			break;
 		}
 		case CONFIG_SERVO: {
 			// Reads servo driver id and channel
-			uint8_t servoDriverId = interfaceData->readByte();
-			uint8_t channel = interfaceData->readByte();
+			uint8_t servoDriverId = packet->readByte();
+			uint8_t channel = packet->readByte();
 
 			// Adds configuration
 			config.addServo({servoDriverId, channel});
 
 			// Sends acknowledgement
-			interfaceData->writeByte(ACK);
-			interfaceData->sendAll();
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			pkt.writeByte(ACK);
+			interfaceData->sendPacket(pkt);
 			break;
 		}
 		case CONFIG_FOC_MOTOR: {
 			// Reads FOC port
-			config.addFOCMotor({interfaceData->readByte()});
+			config.addFOCMotor({packet->readByte()});
 
 			// Sends acknowledgement
-			interfaceData->writeByte(ACK);
-			interfaceData->sendAll();
+			auto pkt = interfaceData->createPacket(packet->getHeader());
+			pkt.writeByte(ACK);
+			interfaceData->sendPacket(pkt);
 			break;
 		}
 	}

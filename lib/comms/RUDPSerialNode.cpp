@@ -1,44 +1,30 @@
-#include "MinBiTSerialNode.h"
+#include "RUDPSerialNode.h"
 
-MinBiTSerialNode::MinBiTSerialNode(std::string name)
-    : protocol(std::make_shared<MinBiTCore>(name, serialStream))
-{
-    protocol->setWriteMode(MinBiTCore::WriteMode::BULK);
-    protocol->setRequestTimeout(1000);
-}
+RUDPSerialNode::RUDPSerialNode(std::string name)
+    : protocol(std::make_shared<RUDPCore>(name)) {}
 
-MinBiTSerialNode::~MinBiTSerialNode() {
+RUDPSerialNode::~RUDPSerialNode() {
     end();
 }
 
-bool MinBiTSerialNode::begin(unsigned int baudRate) {
+bool RUDPSerialNode::begin(unsigned int baudRate) {
     Serial.begin(baudRate);
-    attachProtocol();
+    protocol->attachStream(serialStream);
     return true;
 }
 
-void MinBiTSerialNode::setReadHandler(ReadHandler readHander) {
-    this->readHandler = readHandler;
+void RUDPSerialNode::updateDate() {
+    protocol->updateData();
 }
 
-void MinBiTSerialNode::attachProtocol() {
-    protocol->setReadHandler([this](std::shared_ptr<MinBiTCore::Request> request) {
-        if (readHandler) {
-            readHandler(protocol, request);
-        }
-        protocol->fetchData();
-    });
-    protocol->fetchData();
-}
-
-void MinBiTSerialNode::end() {
+void RUDPSerialNode::end() {
     serialStream->close();
 }
 
-std::shared_ptr<MinBiTCore> MinBiTSerialNode::getProtocol() {
+std::shared_ptr<RUDPCore> RUDPSerialNode::getProtocol() {
     return protocol;
 }
 
-bool MinBiTSerialNode::isOpen() const {
+bool RUDPSerialNode::isOpen() const {
     return serialStream && serialStream->isOpen();
 }

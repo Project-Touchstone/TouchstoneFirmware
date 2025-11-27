@@ -21,6 +21,8 @@ class RUDPCore {
         class Packet {
         public:
             // Creates blank packet
+            Packet();
+            // Creates packet with header and sequence number
             Packet(uint8_t sequenceNum, uint8_t header);
             // Creates packet with a payload
             Packet(uint8_t sequenceNum, uint8_t header, const std::vector<uint8_t>& payload);
@@ -30,7 +32,7 @@ class RUDPCore {
 
             int64_t getSequenceNum() const;
             uint8_t getHeader() const;
-            std::size_t GetPayloadLength() const;
+            std::size_t getPayloadLength() const;
 
             // Writing functions
             void writeBytes(const uint8_t* buffer, std::size_t length);
