@@ -1,5 +1,5 @@
 #ifndef HYDRA_FOC_MOTOR_H
-#define HYDRA_FCO_MOTOR_H
+#define HYDRA_FOC_MOTOR_H
 
 #include <Arduino.h>
 #include <SimpleFOC.h>

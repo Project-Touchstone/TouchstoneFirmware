@@ -3,18 +3,28 @@
 #define RUDP_CORE_H
 
 #include <vector>
-#include <mutex>
-#include <chrono>
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
-#include <thread>
 #include <queue>
 #include <functional>
 #include <atomic>
-#include <condition_variable>
+#include <memory>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
+#include "freertos/portmacro.h"
+#include <Arduino.h>
 
 #include "IStream.h"
+
+// Global RAII helper for spinlock critical sections
+struct SpinLockGuard {
+    portMUX_TYPE* mux;
+    explicit SpinLockGuard(portMUX_TYPE& m) : mux(&m) { portENTER_CRITICAL(mux); }
+    ~SpinLockGuard() { portEXIT_CRITICAL(mux); }
+};
 
 class RUDPCore {
     public:
@@ -127,8 +137,8 @@ class RUDPCore {
         // next available sequence to avoid blocking forever.
         uint32_t missingPacketTimeoutMs;
 
-        // Timestamp when we started waiting for the next expected sequence.
-        std::chrono::steady_clock::time_point missingSince;
+        // Timestamp (millis) when we started waiting for the next expected sequence.
+        unsigned long missingSinceMs;
         bool missingTimerActive;
         // When true the core enforces ordering and timeouts; when false packets
         // are dispatched immediately as they are parsed.
@@ -148,17 +158,21 @@ class RUDPCore {
         // Triggers handlers based on packet
         void callHandlers(std::shared_ptr<Packet> pkt);
 
-        mutable std::mutex dataMutex;
+        // Short critical sections use a spinlock (portMUX). Longer operations
+        // can use semaphores if needed. Using spinlocks avoids heap usage and
+        // is suitable for short protected regions.
+        mutable portMUX_TYPE dataSpinlock;
 
         //Read handler (global)
         ReadHandler readHandler;
 
         // Response handlers keyed by header
         std::unordered_map<uint8_t, ReadHandler> responseHandlers;
-        std::mutex responseMutex;
-        std::condition_variable_any responseCv;
+        mutable portMUX_TYPE responseSpinlock;
         // last response packet received per header (for waitForResponse)
         std::unordered_map<uint8_t, std::shared_ptr<RUDPCore::Packet>> lastResponseMap;
+
+
 
         // Buffer management
         void appendToReadBuffer(const uint8_t* data, std::size_t length);

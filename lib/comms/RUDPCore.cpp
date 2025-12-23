@@ -1,10 +1,9 @@
 // ...existing code...
+#include <Arduino.h>
 #include "RUDPCore.h"
 
 #include <algorithm>
 #include <cassert>
-
-using namespace std::chrono_literals;
 
 /// Packet implementation
 RUDPCore::Packet::Packet() : sequenceNum(0), header(0), payloadLength(0), payload(), readPos(0) {}
@@ -104,12 +103,18 @@ int16_t RUDPCore::Packet::readInt16() {
 /// RUDPCore implementation
 
 RUDPCore::RUDPCore(std::string name)
-        : name(std::move(name)), stream(nullptr), nextSeqNum(0), expectedSeqNum(0),
-            missingPacketTimeoutMs(100), missingSince(), missingTimerActive(false)
+    : name(std::move(name)), stream(nullptr), nextSeqNum(0), expectedSeqNum(0),
+        missingPacketTimeoutMs(100), missingSinceMs(0), missingTimerActive(false)
 {
-        // reliability enabled by default
-        std::lock_guard<std::mutex> lock(dataMutex);
+    // initialize spinlocks
+    dataSpinlock = portMUX_INITIALIZER_UNLOCKED;
+    responseSpinlock = portMUX_INITIALIZER_UNLOCKED;
+
+    // reliability enabled by default
+    {
+        SpinLockGuard guard(dataSpinlock);
         reliabilityEnabled = true;
+    }
 }
 
 RUDPCore::~RUDPCore() {
@@ -117,46 +122,55 @@ RUDPCore::~RUDPCore() {
 }
 
 void RUDPCore::attachStream(std::shared_ptr<IStream> stream) {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     this->stream = stream;
 }
 
 void RUDPCore::setReadHandler(ReadHandler handler) {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     readHandler = std::move(handler);
 }
 
 void RUDPCore::setResponseHandler(uint8_t header, ReadHandler handler) {
-    std::lock_guard<std::mutex> lock(responseMutex);
+    SpinLockGuard guard(responseSpinlock);
     responseHandlers[header] = std::move(handler);
 }
 
 void RUDPCore::clearResponseHandler(uint8_t header) {
-    std::lock_guard<std::mutex> lock(responseMutex);
+    SpinLockGuard guard(responseSpinlock);
     responseHandlers.erase(header);
 }
 
 std::shared_ptr<RUDPCore::Packet> RUDPCore::waitForResponse(uint8_t header, uint32_t timeoutMs) {
-    std::unique_lock<std::mutex> lock(responseMutex);
-    // check if we already have a response
-    auto it = lastResponseMap.find(header);
-    if (it != lastResponseMap.end()) {
-        auto pkt = it->second;
-        lastResponseMap.erase(it);
-        return pkt;
+    // First check if a response is already available
+    {
+        SpinLockGuard guard(responseSpinlock);
+        auto it = lastResponseMap.find(header);
+        if (it != lastResponseMap.end()) {
+            auto pkt = it->second;
+            lastResponseMap.erase(it);
+            return pkt;
+        }
     }
-    // wait for condition variable to be signalled with that header
-    bool got = responseCv.wait_for(lock, std::chrono::milliseconds(timeoutMs), [&]() {
-        return lastResponseMap.find(header) != lastResponseMap.end();
-    });
-    if (!got) return nullptr;
-    auto pkt = lastResponseMap[header];
-    lastResponseMap.erase(header);
-    return pkt;
+
+    unsigned long start = millis();
+    while ((millis() - start) < timeoutMs) {
+        {
+            SpinLockGuard guard(responseSpinlock);
+            auto it = lastResponseMap.find(header);
+            if (it != lastResponseMap.end()) {
+                auto pkt = it->second;
+                lastResponseMap.erase(it);
+                return pkt;
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    return nullptr;
 }
 
 std::shared_ptr<IStream> RUDPCore::getStream() {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     return stream;
 }
 
@@ -166,13 +180,13 @@ RUDPCore::Packet RUDPCore::createPacket(uint8_t header) {
 }
 
 void RUDPCore::setMissingPacketTimeout(uint32_t ms) {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     missingPacketTimeoutMs = ms;
 }
 
 void RUDPCore::setReliabilityEnabled(bool enabled) {
     {
-        std::lock_guard<std::mutex> lock(dataMutex);
+        SpinLockGuard guard(dataSpinlock);
         reliabilityEnabled = enabled;
         // when turning off reliability, reset missing tracker so parser doesn't
         // immediately advance sequences based on old state
@@ -183,17 +197,19 @@ void RUDPCore::setReliabilityEnabled(bool enabled) {
 }
 
 bool RUDPCore::isReliabilityEnabled() const {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     return reliabilityEnabled;
 }
 
 void RUDPCore::holdPacket(const Packet& packet) {
     std::vector<uint8_t> bytes = packet.toBytes();
     {
-        std::lock_guard<std::mutex> lock(dataMutex);
+        SpinLockGuard guard(dataSpinlock);
         appendToWriteBuffer(bytes.data(), bytes.size());
-
-        // Clears last response with same header
+    }
+    // Clears last response with same header
+    {
+        SpinLockGuard rguard(responseSpinlock);
         lastResponseMap.erase(packet.getHeader());
     }
 }
@@ -207,25 +223,32 @@ void RUDPCore::sendAll() {
     // attempt immediate send if stream available
     std::shared_ptr<IStream> s = getStream();
     if (s) {
-        std::lock_guard<std::mutex> lock(dataMutex);
-        if (!writeBuffer.empty()) {
-            s->write(writeBuffer.data(), writeBuffer.size());
-            writeBuffer.clear();
+        std::vector<uint8_t> localBuf;
+        {
+            SpinLockGuard guard(dataSpinlock);
+            if (!writeBuffer.empty()) {
+                localBuf = writeBuffer;
+                writeBuffer.clear();
+            }
+        }
+        if (!localBuf.empty()) {
+            s->write(localBuf.data(), localBuf.size());
         }
     }
 }
 
 void RUDPCore::updateData() {
-    // Pull bytes from stream into readBuffer
-    {
-        std::lock_guard<std::mutex> lock(dataMutex);
-        if (stream) {
-            // read all available bytes
-            std::size_t avail = stream->available();
-            if (avail > 0) {
-                std::vector<uint8_t> tmp(avail);
-                std::size_t got = stream->read(tmp.data(), avail);
-                if (got > 0) appendToReadBuffer(tmp.data(), got);
+    // Pull bytes from stream into readBuffer. Don't hold spinlock while
+    // performing I/O on the stream; copy bytes into readBuffer under lock.
+    std::shared_ptr<IStream> s = getStream();
+    if (s) {
+        std::size_t avail = s->available();
+        if (avail > 0) {
+            std::vector<uint8_t> tmp(avail);
+            std::size_t got = s->read(tmp.data(), avail);
+            if (got > 0) {
+                SpinLockGuard guard(dataSpinlock);
+                appendToReadBuffer(tmp.data(), got);
             }
         }
     }
@@ -236,7 +259,7 @@ void RUDPCore::updateData() {
     while (true) {
         std::shared_ptr<Packet> pkt;
         {
-            std::lock_guard<std::mutex> lock(dataMutex);
+            SpinLockGuard guard(dataSpinlock);
             if (!characterizePacket()) break;
             // we have a full packet in readBuffer; construct it
 
@@ -261,7 +284,7 @@ void RUDPCore::updateData() {
     // doesn't arrive within the configured timeout, advance to the next
     // available sequence to avoid blocking forever.
     if (reliabilityEnabled) {
-        std::lock_guard<std::mutex> lock(dataMutex);
+        SpinLockGuard guard(dataSpinlock);
         // Keep processing while there's a packet matching expectedSeqNum.
         while (true) {
             auto it = incomingPackets.find(expectedSeqNum);
@@ -282,14 +305,14 @@ void RUDPCore::updateData() {
             }
 
             // There are packets buffered but not the one we expect. Start timer if not started
-            auto now = std::chrono::steady_clock::now();
+            unsigned long nowMs = millis();
             if (!missingTimerActive) {
-                missingSince = now;
+                missingSinceMs = nowMs;
                 missingTimerActive = true;
                 break; // give more time for missing packet to arrive
             }
 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - missingSince).count();
+            auto elapsed = static_cast<int64_t>(nowMs - missingSinceMs);
             if (elapsed < static_cast<int64_t>(missingPacketTimeoutMs)) {
                 // not timed out yet
                 break;
@@ -325,7 +348,7 @@ void RUDPCore::updateData() {
         }
     } else {
         // If any incoming packets are buffered move to dispatch vector
-        std::lock_guard<std::mutex> lock(dataMutex);
+        SpinLockGuard guard(dataSpinlock);
         for (auto &p : incomingPackets) {
             dispatch.push_back(p.second);
             incomingPackets.erase(p.first);
@@ -343,38 +366,46 @@ void RUDPCore::updateData() {
 
 void RUDPCore::callHandlers(std::shared_ptr<Packet> pkt) {
     uint8_t header = pkt->getHeader();
-    // Calls a response handler if one exists
-    auto it = responseHandlers.find(header);
-    if (it != responseHandlers.end()) {
-        auto handler = it->second;
-        handler(pkt);
+    // Lookup and store handlers under locks, but invoke them outside locks
+    ReadHandler respHandler = nullptr;
+    {
+        SpinLockGuard guard(responseSpinlock);
+        auto it = responseHandlers.find(header);
+        if (it != responseHandlers.end()) respHandler = it->second;
+        // update last response map
+        lastResponseMap[header] = pkt;
     }
 
-    // Calls general read handler
-    readHandler(pkt);
+    ReadHandler globalHandler = nullptr;
+    {
+        SpinLockGuard guard(dataSpinlock);
+        globalHandler = readHandler;
+    }
 
-    // Updates last response map
-    lastResponseMap[header] = pkt;
+    if (respHandler) respHandler(pkt);
+    if (globalHandler) globalHandler(pkt);
 }
 
 void RUDPCore::flush() {
-    std::lock_guard<std::mutex> lock(dataMutex);
-    readBuffer.clear();
-    writeBuffer.clear();
-    incomingPackets.clear();
     {
-        std::lock_guard<std::mutex> rlock(responseMutex);
+        SpinLockGuard guard(dataSpinlock);
+        readBuffer.clear();
+        writeBuffer.clear();
+        incomingPackets.clear();
+    }
+    {
+        SpinLockGuard rguard(responseSpinlock);
         lastResponseMap.clear();
     }
 }
 
 std::size_t RUDPCore::getReadBufferSize() {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     return readBuffer.size();
 }
 
 std::size_t RUDPCore::getWriteBufferSize() {
-    std::lock_guard<std::mutex> lock(dataMutex);
+    SpinLockGuard guard(dataSpinlock);
     return writeBuffer.size();
 }
 
