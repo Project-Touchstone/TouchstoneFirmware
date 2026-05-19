@@ -5,39 +5,53 @@
 #include "HydraFOCMotor.h"
 #include "HydraFOCConfig.h"
 
-// Motor parameters
-constexpr float MOTOR_POLE_PAIRS = 7;
-constexpr float MOTOR_KV = 100.0f;
+// Loop counter
+unsigned long loopCounter = 0;
 
 // HydraFOC motor object
-HydraFOCMotor motor(focMotorPins[0][0], focMotorPins[0][1], focMotorPins[0][2], focMotorPins[0][3], focMotorPins[0][4], focMotorPins[0][5]);
+HydraFOCMotor motor(focMotorPins[0][0], focMotorPins[0][1], focMotorPins[0][2], focMotorPins[0][3], focMotorPins[0][4], focMotorPins[0][5], I2C1_SDA, focCurrentPins[0][0], focCurrentPins[0][1]);
 
 void setup() {
     Serial.begin(SERIAL_BAUD_RATE);
+    // Configure I2C
+    Wire.begin(I2C0_SDA, I2C0_SCL);
+
     // Configure driver pins
     pinMode(focDriverSleepPin, OUTPUT);
     pinMode(focDriverResetPin, OUTPUT);
     digitalWrite(focDriverSleepPin, HIGH); // Wake up driver
     digitalWrite(focDriverResetPin, HIGH); // Release reset
-    pinMode(focCurrentPins[0][0], INPUT);
-    pinMode(focCurrentPins[0][1], INPUT);
 
     // Initialize HydraFOC motor
-    motor.begin();
+    motor.begin(Direction::CW, 1.66f, true);
+    motor.resetEncoder();
+
+    delay(1000); // Wait for motor to stabilize
+    Serial.println("FOC Motor Test Initialized.");
+
+    // Set target position
+    motor.setPosition(0.f);
 }
 
 void loop() {
-    // Example: Set target velocity
-    motor.setVelocity(1.0f); // 10 rad/s
-
     // Run FOC control loop
     motor.update();
 
+    // Motor variable monitoring
+    //motor.monitor();
+
     // Prints current sensing readings
-    Serial.print("Current A: ");
+    /*Serial.print("Current A: ");
     Serial.print(analogRead(focCurrentPins[0][0]));
     Serial.print(" | Current B: ");
-    Serial.println(analogRead(focCurrentPins[0][1]));
+    Serial.println(analogRead(focCurrentPins[0][1]));*/
+
+    // Prints encoder angle with full precision (every 100 loop counts)
+    if (loopCounter % 100 == 0) {
+        Serial.println(motor.getPosition(), 6);  // 6 decimal places
+    }
+
+    loopCounter++;
 }
 
 #endif // FOC_MOTOR_TEST_HPP
