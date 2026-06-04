@@ -6,7 +6,7 @@
 #define INTEGRATION_TESTING
 
 #ifdef INTEGRATION_TESTING
-#include "../integration/foc_motor_test.hpp" // Testing file to run
+#include "../integration/dual_foc_motor_test.hpp" // Testing file to run
 #endif
 //////////////////////////////////////////////////////////////
 
