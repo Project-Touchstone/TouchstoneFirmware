@@ -6,7 +6,7 @@
 #include "HydraFOCConfig.h"
 
 // Motor port (0 or 1)
-#define MOTOR_PORT 1
+#define MOTOR_PORT 0
 
 // Loop counter
 unsigned long loopCounter = 0;

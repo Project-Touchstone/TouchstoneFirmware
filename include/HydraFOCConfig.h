@@ -80,4 +80,4 @@ Direction * motorDirs = new Direction[NUM_FOC_MOTORS] {
     Direction::CCW  // Motor 1
 };
 
-float encoderElectricAngles[NUM_FOC_MOTORS] = {1.67f, 2.54f}; // Motor 0, Motor 1
+float encoderElectricAngles[NUM_FOC_MOTORS] = {0.88f, 2.54f}; // Motor 0, Motor 1

@@ -36,8 +36,8 @@ void setup() {
     Serial.println("Dual FOC Motor Test Initialized.");
 
     // Set target torques
-    motors[0].setTorque(0.5f);
-    motors[1].setTorque(0.5f);
+    motors[0].setTorque(0.6f);
+    motors[1].setTorque(0.6f);
 }
 
 void loop() {

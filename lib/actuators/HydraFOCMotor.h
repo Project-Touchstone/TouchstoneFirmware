@@ -16,6 +16,9 @@ public:
     // Resets the encoder
     void resetEncoder();
 
+    // Resets the encoder with a new offset
+    void resetEncoder(float newOffset);
+
     // Set target velocity (rad/s)
     void setVelocity(float velocity);
 

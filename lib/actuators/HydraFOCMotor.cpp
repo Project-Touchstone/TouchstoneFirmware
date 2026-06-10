@@ -84,6 +84,10 @@ void HydraFOCMotor::resetEncoder() {
     motor.sensor_offset = motor.shaft_angle;
 }
 
+void HydraFOCMotor::resetEncoder(float newOffset) {
+    motor.sensor_offset = newOffset;
+}
+
 void HydraFOCMotor::setVelocity(float velocity) {
     targetVelocity = velocity;
     mode = VELOCITY;
