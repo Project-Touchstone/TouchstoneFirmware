@@ -129,8 +129,8 @@ void TaskMotors(void *pvParameters) {
 
             float preloadTorque = constrain(torqueBaseline + preloadCorrection, preloadMinTorque, preloadMaxTorque);
 
-            motors[0].setTorque(preloadTorque);
-            motors[1].setTorque(preloadTorque);
+            motors[0].setTorque(0); //preloadTorque);
+            motors[1].setTorque(0); //preloadTorque);
         }
 
         // Runs FOC control loop
